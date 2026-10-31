@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'planner-shell-v4-text-row-only';
+const SHELL_CACHE = 'planner-shell-v5-independent-type-color';
 const SHELL_ASSETS = [
   './',
   './index.html',
