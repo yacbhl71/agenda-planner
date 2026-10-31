@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'planner-shell-v13-shared-profile-palette';
+const SHELL_CACHE = 'planner-shell-v14-dynamic-profile-colors';
 const SHELL_ASSETS = [
   './',
   './index.html',

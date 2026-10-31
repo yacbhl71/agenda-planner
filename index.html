@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#143451">
 <meta name="application-name" content="Mon planning">
-<meta name="planner-build" content="r14-shared-profile-palette">
+<meta name="planner-build" content="r15-dynamic-profile-colors">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" type="image/png" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
@@ -30,6 +30,7 @@
 .profile-field input[type=color]{height:37px;padding:4px;cursor:pointer}
 .profile-status{margin:9px 0 0!important;font-size:11px!important}
 .profile-color-palette{grid-column:1/-1;margin:0;padding-top:8px;border-top:1px solid var(--line)}
+.profile-add{margin-top:10px;width:100%;min-height:40px}
 @media(max-width:700px){.profile-row{grid-template-columns:repeat(2,minmax(0,1fr))}.profile-field input{font-size:16px;min-height:42px}}
 .dialog-head-actions{display:flex;align-items:center;gap:7px;flex-shrink:0}
 .dialog-delete{white-space:nowrap}
@@ -152,9 +153,10 @@
       </section>
     </div>
     <section class="panel profile-panel" aria-labelledby="profilesHeading">
-      <h2 id="profilesHeading">Mes 7 profils réutilisables</h2>
-      <p>Renseigne une fois le code, sa couleur et ses horaires. Chaque profil propose toutes les pastilles de l’app ; « Couleur libre » garde aussi le sélecteur de ton appareil. Dans le formulaire d’une date, choisis un profil pour reprendre son code, sa couleur et ses heures. Les profils restent vides tant que tu ne les complètes pas.</p>
-      <div class="profile-list" id="profileList" aria-label="Sept profils de codes et d’horaires"></div>
+      <h2 id="profilesHeading">Mes profils réutilisables</h2>
+      <p>Renseigne une fois le code, sa couleur et ses horaires. Chaque profil propose toutes les pastilles de l’app ; « Couleur libre » garde aussi le sélecteur de ton appareil. La couleur du calendrier suit automatiquement le profil dont le code correspond à l’entrée. Dans le formulaire d’une date, choisis un profil pour reprendre son code, sa couleur et ses heures. Les profils restent vides tant que tu ne les complètes pas.</p>
+      <div class="profile-list" id="profileList" aria-label="Profils de codes et d’horaires"></div>
+      <button class="secondary profile-add" id="addProfile" type="button">＋ Ajouter un profil</button>
       <p class="profile-status" id="profileStatus" role="status" aria-live="polite">Les profils sont enregistrés uniquement dans ce navigateur.</p>
     </section>
     <div class="footer">Planner personnel : pas de connexion ni d’envoi de planning. Les horaires restent vides tant que vous ne les renseignez pas. Pour HE, ajoutez l’heure et le statut après confirmation du manager.</div>
@@ -172,7 +174,7 @@
     <div class="field"><label for="shiftPerson">Nom associé (facultatif)</label><input id="shiftPerson" maxlength="80" placeholder="À renseigner après l’import, si besoin"></div>
     <div class="field-row"><div class="field"><label for="shiftStart">Début (facultatif)</label><input id="shiftStart" type="time"></div><div class="field"><label for="shiftEnd">Fin (facultatif)</label><input id="shiftEnd" type="time"></div></div>
     <div class="field-row"><div class="field"><label for="shiftStatus">Statut</label><select id="shiftStatus"><option>Planifié</option><option>Confirmé par le manager</option><option>Demandé</option><option>À confirmer</option></select></div><div class="field"><label for="shiftBreak">Pause (facultatif)</label><input id="shiftBreak" maxlength="40" placeholder="Ex. 00:00–01:15"></div></div>
-    <div class="field"><label for="shiftColor">Couleur de l’entrée</label><input id="shiftColor" type="color" value="#2874ad" aria-describedby="shiftColorNote"><div class="color-palette" id="colorPalette" role="group" aria-label="Couleurs prédéfinies"></div><div class="type-note" id="shiftColorNote">La même palette complète est disponible ici et dans chacun des 7 profils. Le sélecteur au-dessus conserve les couleurs de votre appareil et permet une couleur libre. Choisir une couleur ne change pas le type Nuit/Journée.</div></div>
+    <div class="field"><label for="shiftColor">Couleur de l’entrée</label><input id="shiftColor" type="color" value="#2874ad" aria-describedby="shiftColorNote"><div class="color-palette" id="colorPalette" role="group" aria-label="Couleurs prédéfinies"></div><div class="type-note" id="shiftColorNote">La même palette complète est disponible ici et dans chaque profil. Le sélecteur au-dessus conserve les couleurs de votre appareil et permet une couleur libre. Choisir une couleur ne change pas le type Nuit/Journée.</div></div>
     <div class="field"><label for="shiftNote">Note personnelle (facultatif)</label><textarea id="shiftNote" maxlength="300" placeholder="Équipe, personne en binôme, détail utile…"></textarea></div>
     <div class="form-actions"><div class="right-actions"><button class="secondary" id="cancelDialog" type="button">Annuler</button><button class="primary" id="saveEntry" type="submit">Enregistrer</button></div></div>
   </form>
@@ -183,7 +185,8 @@
   'use strict';
   const STORE_KEY = 'planner-personnel-local-v1';
   const PROFILE_KEY = 'planner-personnel-profiles-v1';
-  // One shared, additive palette: entry form and all seven profiles stay in sync.
+  const MAX_PROFILES = 100;
+  // One shared, additive palette: entry form and every profile stay in sync.
   const COLOR_PALETTE = [
     {color:'#2874AD',name:'Bleu'},
     {color:'#F2D34F',name:'Jaune'},
@@ -199,6 +202,7 @@
   let view = new Date(new Date().getFullYear(),new Date().getMonth(),1);
   let entries = loadEntries();
   let profiles = loadProfiles();
+  let manualEntryColor = false;
   let copyMode = false;
   let currentFileUrl = null;
   let heicConverterPromise = null;
@@ -232,8 +236,10 @@
   function loadEntries(){try{const raw=localStorage.getItem(STORE_KEY);const value=raw?JSON.parse(raw):[];return Array.isArray(value)?value.filter(x=>x&&x.id&&validDate(x.date)&&typeof x.type==='string').map(normalizedEntry):[]}catch(e){return []}}
   function saveEntries(){try{localStorage.setItem(STORE_KEY,JSON.stringify(entries));const stamp=new Intl.DateTimeFormat('fr-FR',{hour:'2-digit',minute:'2-digit'}).format(new Date());$('saveStatus').textContent=`Enregistré automatiquement à ${stamp}`;return true}catch(e){$('saveStatus').textContent='Échec de sauvegarde locale';showToast('Impossible d’enregistrer : le stockage local du navigateur est indisponible.');return false}}
   function emptyProfiles(){return Array.from({length:7},()=>({code:'',color:'',start:'',end:''}))}
-  function loadProfiles(){try{const value=JSON.parse(localStorage.getItem(PROFILE_KEY)||'null');return Array.from({length:7},(_,i)=>{const item=Array.isArray(value)?value[i]||{}:{};return{code:typeof item.code==='string'?item.code.slice(0,40):'',color:safeColor(item.color),start:/^\d{2}:\d{2}$/.test(item.start||'')?item.start:'',end:/^\d{2}:\d{2}$/.test(item.end||'')?item.end:''}})}catch(e){return emptyProfiles()}}
+  function normalizedProfile(item){item=item&&typeof item==='object'?item:{};return{code:typeof item.code==='string'?item.code.slice(0,40):'',color:safeColor(item.color),start:/^\d{2}:\d{2}$/.test(item.start||'')?item.start:'',end:/^\d{2}:\d{2}$/.test(item.end||'')?item.end:''}}
+  function loadProfiles(){try{const value=JSON.parse(localStorage.getItem(PROFILE_KEY)||'null');return Array.isArray(value)?value.slice(0,MAX_PROFILES).map(normalizedProfile):emptyProfiles()}catch(e){return emptyProfiles()}}
   function saveProfiles(){try{localStorage.setItem(PROFILE_KEY,JSON.stringify(profiles));$('profileStatus').textContent='Profils enregistrés uniquement dans ce navigateur.';return true}catch(e){$('profileStatus').textContent='Impossible de sauvegarder les profils sur cet appareil.';return false}}
+  function addProfile(){if(profiles.length>=MAX_PROFILES){showToast(`Limite de ${MAX_PROFILES} profils atteinte.`);return}profiles.push({code:'',color:'',start:'',end:''});if(!saveProfiles()){profiles.pop();return}renderProfiles();const input=$(`profileCode${profiles.length-1}`);input?.focus();input?.scrollIntoView?.({behavior:'smooth',block:'center'})}
   function colorPaletteMarkup(selectedColor=''){
     const selected=safeColor(selectedColor);
     return COLOR_PALETTE.map(({color,name})=>`<span class="color-choice"><button class="color-swatch" type="button" data-color="${color}" style="--swatch:${color}" aria-label="${name}" aria-pressed="${color===selected}" title="${name}"></button><span>${name}</span></span>`).join('');
@@ -247,11 +253,13 @@
     updateProfileOptions();
   }
   function updateProfileOptions(){const select=$('shiftPreset');if(!select)return;const selected=select.value,active=profiles.map((profile,index)=>({profile,index})).filter(item=>item.profile.code.trim());select.innerHTML='<option value="">Aucun profil choisi</option>'+active.map(item=>`<option value="${item.index}">Profil ${item.index+1} · ${safeText(item.profile.code.trim())}</option>`).join('');if(active.some(item=>String(item.index)===selected))select.value=selected}
-  function applySelectedProfile(){const value=$('shiftPreset').value;if(value==='')return;const profile=profiles[Number(value)];if(!profile?.code.trim())return;$('shiftCode').value=profile.code.trim();if(profile.color)$('shiftColor').value=profile.color;$('shiftStart').value=profile.start;$('shiftEnd').value=profile.end;updateColorPalette()}
+  function applySelectedProfile(){const value=$('shiftPreset').value;if(value==='')return;const profile=profiles[Number(value)];if(!profile?.code.trim())return;$('shiftCode').value=profile.code.trim();$('shiftColor').value=profile.color||'#2874ad';manualEntryColor=false;$('shiftStart').value=profile.start;$('shiftEnd').value=profile.end;updateColorPalette()}
   function safeText(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
   function safeColor(value){return typeof value==='string'&&/^#[0-9a-fA-F]{6}$/.test(value)?value.toUpperCase():''}
   function colorInk(value){const color=safeColor(value);if(!color)return '#183149';const luminance=hex=>{const channels=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255).map(c=>c<=.04045?c/12.92:((c+.055)/1.055)**2.4);return .2126*channels[0]+.7152*channels[1]+.0722*channels[2]};const background=luminance(color),whiteContrast=1.05/(background+.05),blackContrast=(background+.05)/.05;return whiteContrast>=blackContrast?'#fff':'#000'}
-  function normalizedEntry(entry){const color=safeColor(entry.color);if(color)return{...entry,color};const {color:discarded,...legacy}=entry;return legacy}
+  function profileForCode(code){const key=String(code||'').trim().toLocaleUpperCase('fr-FR');if(!key)return null;return profiles.find(profile=>String(profile.code||'').trim().toLocaleUpperCase('fr-FR')===key&&safeColor(profile.color))||null}
+  function entryColor(entry){return entry?.colorSource==='manual'?safeColor(entry.color):(profileForCode(entry?.code)?.color||safeColor(entry?.color))}
+  function normalizedEntry(entry){const color=safeColor(entry.color),normalized={...entry,colorSource:entry.colorSource==='manual'?'manual':'auto'};if(color)return{...normalized,color};delete normalized.color;return normalized}
   function dateFromKey(key){const [y,m,d]=key.split('-').map(Number);return new Date(y,m-1,d)}
   function keyFromDate(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
   function monthKey(){return `${view.getFullYear()}-${String(view.getMonth()+1).padStart(2,'0')}`}
@@ -291,9 +299,9 @@
     for(let i=0;i<offset;i++)html+='<div class="day empty" aria-hidden="true"></div>';
     for(let d=1;d<=daysInMonth;d++){
       const date=new Date(year,month,d),key=keyFromDate(date),items=byDate.get(key)||[];
-      const chips=items.slice(0,2).map(e=>{const color=safeColor(e.color),code=String(e.code||'').trim(),details=[e.person,e.start].filter(Boolean).join(' · ');const style=color?` style="--entry-color:${color};--entry-ink:${colorInk(color)}"`:'';return `<span class="chip ${typeClass(e)}${color?' color-chip':''}"${style}><span class="chip-code">${safeText(code||e.type)}</span>${code&&code!==e.type?`<span class="chip-type">${safeText(e.type)}</span>`:''}${details?`<span class="chip-detail">${safeText(details)}</span>`:''}</span>`}).join('');
+      const chips=items.slice(0,2).map(e=>{const color=entryColor(e),code=String(e.code||'').trim(),details=[e.person,e.start].filter(Boolean).join(' · ');const style=color?` style="--entry-color:${color};--entry-ink:${colorInk(color)}"`:'';return `<span class="chip ${typeClass(e)}${color?' color-chip':''}"${style}><span class="chip-code">${safeText(code||e.type)}</span>${code&&code!==e.type?`<span class="chip-type">${safeText(e.type)}</span>`:''}${details?`<span class="chip-detail">${safeText(details)}</span>`:''}</span>`}).join('');
       const more=items.length>2?`<span class="more">+${items.length-2}</span>`:'';
-      const dayColor=items.length===1?safeColor(items[0].color):'',dayInk=dayColor?colorInk(dayColor):'',dayStyle=dayColor?` style="--day-color:${dayColor};--day-ink:${dayInk}"`:'';
+      const dayColor=items.length===1?entryColor(items[0]):'',dayInk=dayColor?colorInk(dayColor):'',dayStyle=dayColor?` style="--day-color:${dayColor};--day-ink:${dayInk}"`:'';
       html+=`<button class="day ${key===todayKey?'today':''}${dayColor?' color-day':''}"${dayStyle} type="button" data-date="${key}" aria-label="${safeText(longFmt.format(date))}${items.length?`, ${items.length} entrée${items.length>1?'s':''}`:''}"><span class="day-num">${d}</span><span class="chips">${chips}${more}</span></button>`;
     }
     const remainder=(7-(offset+daysInMonth)%7)%7;
@@ -316,7 +324,7 @@
     $('entryCountLabel').textContent=`${list.length} entrée${list.length>1?'s':''}`;
     if(!list.length){dom.entryList.className='empty-list';dom.entryList.textContent='Aucune entrée pour ce mois. Choisissez un jour du calendrier pour commencer.';return}
     dom.entryList.className='entries';
-    dom.entryList.innerHTML=list.map(e=>{const color=safeColor(e.color);const style=color?` style="--entry-color:${color}"`:'';return `<article class="entry${color?' has-color':''}"${style}><div class="entry-main"><div class="entry-title">${color?'<span class="entry-color" aria-hidden="true"></span>':''}${safeText(fmtDate(e.date))} · ${safeText(labelFor(e))}<div class="entry-subline"><span class="entry-type-tag">${safeText(e.type)}</span>${e.status?`<span class="status">${safeText(e.status)}</span>`:''}</div></div><div class="entry-meta">${safeText(shiftTimeText(e))}${e.break?` · Pause ${safeText(e.break)}`:''}${e.person?`<br>Nom : ${safeText(e.person)}`:''}${e.note?`<br>${safeText(e.note)}`:''}</div></div><div class="entry-actions"><button type="button" data-copy="${safeText(e.id)}" aria-label="Copier ${safeText(labelFor(e))}">Copier</button><button type="button" data-edit="${safeText(e.id)}" aria-label="Modifier ${safeText(labelFor(e))}">Modifier</button><button type="button" data-delete="${safeText(e.id)}" aria-label="Supprimer ${safeText(labelFor(e))}">Supprimer</button></div></article>`}).join('');
+    dom.entryList.innerHTML=list.map(e=>{const color=entryColor(e);const style=color?` style="--entry-color:${color}"`:'';return `<article class="entry${color?' has-color':''}"${style}><div class="entry-main"><div class="entry-title">${color?'<span class="entry-color" aria-hidden="true"></span>':''}${safeText(fmtDate(e.date))} · ${safeText(labelFor(e))}<div class="entry-subline"><span class="entry-type-tag">${safeText(e.type)}</span>${e.status?`<span class="status">${safeText(e.status)}</span>`:''}</div></div><div class="entry-meta">${safeText(shiftTimeText(e))}${e.break?` · Pause ${safeText(e.break)}`:''}${e.person?`<br>Nom : ${safeText(e.person)}`:''}${e.note?`<br>${safeText(e.note)}`:''}</div></div><div class="entry-actions"><button type="button" data-copy="${safeText(e.id)}" aria-label="Copier ${safeText(labelFor(e))}">Copier</button><button type="button" data-edit="${safeText(e.id)}" aria-label="Modifier ${safeText(labelFor(e))}">Modifier</button><button type="button" data-delete="${safeText(e.id)}" aria-label="Supprimer ${safeText(labelFor(e))}">Supprimer</button></div></article>`}).join('');
     dom.entryList.querySelectorAll('[data-copy]').forEach(btn=>btn.addEventListener('click',()=>{const item=entries.find(e=>e.id===btn.dataset.copy);if(item)openCopyForm(item)}));
     dom.entryList.querySelectorAll('[data-delete]').forEach(btn=>btn.addEventListener('click',()=>{const item=entries.find(e=>e.id===btn.dataset.delete);if(!item||!confirm(`Supprimer l’entrée « ${labelFor(item)} » du ${fmtDate(item.date)} ?`))return;const previous=entries;entries=entries.filter(e=>e.id!==item.id);if(saveEntries()){render();showToast('Entrée supprimée.')}else entries=previous}));
     dom.entryList.querySelectorAll('[data-edit]').forEach(btn=>btn.addEventListener('click',()=>{const item=entries.find(e=>e.id===btn.dataset.edit);if(item)openForm(item.date,item)}));
@@ -328,11 +336,11 @@
     return 'Saisissez uniquement les heures confirmées. Le code du tableau est facultatif.';
   }
   function openForm(dateKey,entry=null){
-    copyMode=false;$('copyDateField').hidden=true;$('copyDate').required=false;$('copyDate').value='';$('dateFieldLabel').textContent='Date';$('dialogSubtitle').textContent=entry?'Modifiez ou supprimez cette entrée. Le bouton rouge « Supprimer » est en haut à droite.':'Saisie privée, enregistrée dans ce navigateur. Pour supprimer une entrée existante, ouvrez « Modifier » dans la liste.';$('saveEntry').textContent='Enregistrer';
+    copyMode=false;manualEntryColor=entry?.colorSource==='manual';$('copyDateField').hidden=true;$('copyDate').required=false;$('copyDate').value='';$('dateFieldLabel').textContent='Date';$('dialogSubtitle').textContent=entry?'Modifiez ou supprimez cette entrée. Le bouton rouge « Supprimer » est en haut à droite.':'Saisie privée, enregistrée dans ce navigateur. Pour supprimer une entrée existante, ouvrez « Modifier » dans la liste.';$('saveEntry').textContent='Enregistrer';
     $('shiftPreset').value='';
     $('entryId').value=entry?.id||'';$('shiftDate').value=dateKey;$('selectedDateLabel').textContent=longFmt.format(dateFromKey(dateKey));
     $('dialogTitle').textContent=entry?'Modifier l’entrée':'Ajouter une entrée';
-    $('shiftType').value=entry?.type||'Nuit';$('shiftCode').value=entry?.code||'';$('shiftStart').value=entry?.start||'';$('shiftEnd').value=entry?.end||'';$('shiftStatus').value=entry?.status||((entry?.type==='HE')?'À confirmer':'Planifié');$('shiftBreak').value=entry?.break||'';$('shiftNote').value=entry?.note||'';$('shiftPerson').value=entry?.person||'';$('shiftColor').value=safeColor(entry?.color)||'#2874ad';updateColorPalette();
+    $('shiftType').value=entry?.type||'Nuit';$('shiftCode').value=entry?.code||'';$('shiftStart').value=entry?.start||'';$('shiftEnd').value=entry?.end||'';$('shiftStatus').value=entry?.status||((entry?.type==='HE')?'À confirmer':'Planifié');$('shiftBreak').value=entry?.break||'';$('shiftNote').value=entry?.note||'';$('shiftPerson').value=entry?.person||'';$('shiftColor').value=entryColor(entry)||'#2874ad';updateColorPalette();
     $('deleteEntry').hidden=!entry;$('typeNote').textContent=typeDescription($('shiftType').value);
     dom.dialog.showModal();
   }
@@ -340,15 +348,17 @@
   function closeForm(){dom.dialog.close();copyMode=false}
   $('shiftType').addEventListener('change',()=>{$('typeNote').textContent=typeDescription($('shiftType').value);if($('shiftType').value==='HE'&&!$('entryId').value)$('shiftStatus').value='À confirmer';if($('shiftType').value==='G bleu'&&!$('shiftCode').value)$('shiftCode').value='G bleu';if($('shiftType').value==='HE'&&!$('shiftCode').value)$('shiftCode').value='HE'});
   function updateColorPalette(){updatePaletteSelection($('colorPalette'),$('shiftColor').value)}
-  $('colorPalette').addEventListener('click',event=>{const button=event.target.closest('[data-color]');if(!button)return;$('shiftColor').value=button.dataset.color;updateColorPalette()});
-  $('shiftColor').addEventListener('input',updateColorPalette);$('shiftColor').addEventListener('change',updateColorPalette);
+  function syncCodeProfileColor(){if(manualEntryColor)return;const profile=profileForCode($('shiftCode').value);$('shiftColor').value=profile?.color||'#2874ad';updateColorPalette()}
+  $('shiftCode').addEventListener('input',syncCodeProfileColor);
+  $('colorPalette').addEventListener('click',event=>{const button=event.target.closest('[data-color]');if(!button)return;manualEntryColor=true;$('shiftColor').value=button.dataset.color;updateColorPalette()});
+  $('shiftColor').addEventListener('input',()=>{manualEntryColor=true;updateColorPalette()});$('shiftColor').addEventListener('change',()=>{manualEntryColor=true;updateColorPalette()});
   function updateProfileInput(event){
     const input=event.target.closest('[data-profile-field]');if(!input)return;
     const row=input.closest('[data-profile-index]'),index=Number(row?.dataset.profileIndex),field=input.dataset.profileField;
     if(!Number.isInteger(index)||index<0||index>=profiles.length||!['code','color','start','end'].includes(field))return;
     profiles[index][field]=field==='color'?safeColor(input.value):input.value;
     if(field==='color')updatePaletteSelection(row.querySelector('.color-palette'),profiles[index].color);
-    if(saveProfiles())updateProfileOptions();
+    if(saveProfiles()){updateProfileOptions();if(field==='code'||field==='color')render()}
   }
   $('profileList').addEventListener('input',updateProfileInput);
   $('profileList').addEventListener('change',updateProfileInput);
@@ -358,13 +368,14 @@
     if(!Number.isInteger(index)||index<0||index>=profiles.length||!color)return;
     profiles[index].color=color;row.querySelector('[data-profile-field="color"]').value=color;
     updatePaletteSelection(row.querySelector('.color-palette'),color);
-    if(saveProfiles())updateProfileOptions();
+    if(saveProfiles()){updateProfileOptions();render()}
   });
+  $('addProfile').addEventListener('click',addProfile);
   $('shiftPreset').addEventListener('change',applySelectedProfile);
   $('shiftForm').addEventListener('submit',e=>{
     e.preventDefault();const id=$('entryId').value||`${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
-    if(copyMode){const targetDate=$('copyDate').value;if(!validDate(targetDate)){ $('copyDate').reportValidity();return}if(targetDate===$('shiftDate').value){showToast('Choisissez une date différente de la date d’origine.');return}const copied={id,date:targetDate,type:$('shiftType').value,code:$('shiftCode').value.trim(),start:$('shiftStart').value,end:$('shiftEnd').value,status:$('shiftStatus').value,break:$('shiftBreak').value.trim(),note:$('shiftNote').value.trim(),person:$('shiftPerson').value.trim(),color:safeColor($('shiftColor').value)||'#2874ad'};const previous=entries;entries=[...entries,copied];if(saveEntries()){const date=dateFromKey(targetDate);view=new Date(date.getFullYear(),date.getMonth(),1);render();closeForm();showToast('Copie ajoutée au calendrier.')}else entries=previous;return}
-    const obj={id,date:$('shiftDate').value,type:$('shiftType').value,code:$('shiftCode').value.trim(),start:$('shiftStart').value,end:$('shiftEnd').value,status:$('shiftStatus').value,break:$('shiftBreak').value.trim(),note:$('shiftNote').value.trim(),person:$('shiftPerson').value.trim(),color:safeColor($('shiftColor').value)||'#2874ad'};
+    if(copyMode){const targetDate=$('copyDate').value;if(!validDate(targetDate)){ $('copyDate').reportValidity();return}if(targetDate===$('shiftDate').value){showToast('Choisissez une date différente de la date d’origine.');return}const copied={id,date:targetDate,type:$('shiftType').value,code:$('shiftCode').value.trim(),start:$('shiftStart').value,end:$('shiftEnd').value,status:$('shiftStatus').value,break:$('shiftBreak').value.trim(),note:$('shiftNote').value.trim(),person:$('shiftPerson').value.trim(),color:safeColor($('shiftColor').value)||'#2874ad',colorSource:manualEntryColor?'manual':'auto'};const previous=entries;entries=[...entries,copied];if(saveEntries()){const date=dateFromKey(targetDate);view=new Date(date.getFullYear(),date.getMonth(),1);render();closeForm();showToast('Copie ajoutée au calendrier.')}else entries=previous;return}
+    const obj={id,date:$('shiftDate').value,type:$('shiftType').value,code:$('shiftCode').value.trim(),start:$('shiftStart').value,end:$('shiftEnd').value,status:$('shiftStatus').value,break:$('shiftBreak').value.trim(),note:$('shiftNote').value.trim(),person:$('shiftPerson').value.trim(),color:safeColor($('shiftColor').value)||'#2874ad',colorSource:manualEntryColor?'manual':'auto'};
     const previous=entries;entries=[...entries];const idx=entries.findIndex(x=>x.id===id);if(idx>=0)entries[idx]=obj;else entries.push(obj);
     if(saveEntries()){render();closeForm();showToast(idx>=0?'Entrée mise à jour.':'Entrée enregistrée dans ce navigateur.')}else entries=previous;
   });
