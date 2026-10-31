@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'planner-shell-v15-two-color-cell-badge';
+const SHELL_CACHE = 'planner-shell-v16-linked-manual-cell-badge';
 const SHELL_ASSETS = [
   './',
   './index.html',
