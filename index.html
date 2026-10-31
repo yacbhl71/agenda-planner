@@ -26,7 +26,8 @@
 .dialog-head-actions{display:flex;align-items:center;gap:7px;flex-shrink:0}
 .dialog-delete{white-space:nowrap}
 .form-actions{justify-content:flex-end}
-@media(max-width:420px){.profile-row{grid-template-columns:minmax(0,1fr) 55px;gap:7px}.profile-field.profile-code{grid-column:1/-1}}
+.entry-actions button[data-delete]{color:#a8443d;border-color:#efd5d3}
+@media(max-width:420px){.profile-row{grid-template-columns:minmax(0,1fr) 55px;gap:7px}.profile-field.profile-code{grid-column:1/-1}.entry{flex-direction:column;align-items:stretch}.entry-actions{justify-content:flex-end}}
 </style>
 <style>
 :root{--navy:#143451;--ink:#183149;--muted:#667b8e;--paper:#fff;--canvas:#eef3f8;--line:#e3eaf0;--blue:#2874ad;--blue-bg:#e8f3fb;--soft:#f7f9fb;--warn:#fff7e8;--warn-line:#f2dfb9;--shadow:0 18px 48px rgba(23,49,73,.13)}
@@ -285,8 +286,9 @@
     $('entryCountLabel').textContent=`${list.length} entrée${list.length>1?'s':''}`;
     if(!list.length){dom.entryList.className='empty-list';dom.entryList.textContent='Aucune entrée pour ce mois. Choisissez un jour du calendrier pour commencer.';return}
     dom.entryList.className='entries';
-    dom.entryList.innerHTML=list.map(e=>{const color=safeColor(e.color);const style=color?` style="--entry-color:${color}"`:'';return `<article class="entry${color?' has-color':''}"${style}><div class="entry-main"><div class="entry-title">${color?'<span class="entry-color" aria-hidden="true"></span>':''}${safeText(fmtDate(e.date))} · ${safeText(labelFor(e))}<div class="entry-subline"><span class="entry-type-tag">${safeText(e.type)}</span>${e.status?`<span class="status">${safeText(e.status)}</span>`:''}</div></div><div class="entry-meta">${safeText(shiftTimeText(e))}${e.break?` · Pause ${safeText(e.break)}`:''}${e.person?`<br>Nom : ${safeText(e.person)}`:''}${e.note?`<br>${safeText(e.note)}`:''}</div></div><div class="entry-actions"><button type="button" data-copy="${safeText(e.id)}" aria-label="Copier ${safeText(labelFor(e))}">Copier</button><button type="button" data-edit="${safeText(e.id)}" aria-label="Modifier ${safeText(labelFor(e))}">Modifier</button></div></article>`}).join('');
+    dom.entryList.innerHTML=list.map(e=>{const color=safeColor(e.color);const style=color?` style="--entry-color:${color}"`:'';return `<article class="entry${color?' has-color':''}"${style}><div class="entry-main"><div class="entry-title">${color?'<span class="entry-color" aria-hidden="true"></span>':''}${safeText(fmtDate(e.date))} · ${safeText(labelFor(e))}<div class="entry-subline"><span class="entry-type-tag">${safeText(e.type)}</span>${e.status?`<span class="status">${safeText(e.status)}</span>`:''}</div></div><div class="entry-meta">${safeText(shiftTimeText(e))}${e.break?` · Pause ${safeText(e.break)}`:''}${e.person?`<br>Nom : ${safeText(e.person)}`:''}${e.note?`<br>${safeText(e.note)}`:''}</div></div><div class="entry-actions"><button type="button" data-copy="${safeText(e.id)}" aria-label="Copier ${safeText(labelFor(e))}">Copier</button><button type="button" data-edit="${safeText(e.id)}" aria-label="Modifier ${safeText(labelFor(e))}">Modifier</button><button type="button" data-delete="${safeText(e.id)}" aria-label="Supprimer ${safeText(labelFor(e))}">Supprimer</button></div></article>`}).join('');
     dom.entryList.querySelectorAll('[data-copy]').forEach(btn=>btn.addEventListener('click',()=>{const item=entries.find(e=>e.id===btn.dataset.copy);if(item)openCopyForm(item)}));
+    dom.entryList.querySelectorAll('[data-delete]').forEach(btn=>btn.addEventListener('click',()=>{const item=entries.find(e=>e.id===btn.dataset.delete);if(!item||!confirm(`Supprimer l’entrée « ${labelFor(item)} » du ${fmtDate(item.date)} ?`))return;const previous=entries;entries=entries.filter(e=>e.id!==item.id);if(saveEntries()){render();showToast('Entrée supprimée.')}else entries=previous}));
     dom.entryList.querySelectorAll('[data-edit]').forEach(btn=>btn.addEventListener('click',()=>{const item=entries.find(e=>e.id===btn.dataset.edit);if(item)openForm(item.date,item)}));
   }
   function typeDescription(type){
