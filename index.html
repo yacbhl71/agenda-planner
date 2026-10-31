@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#143451">
 <meta name="application-name" content="Mon planning">
-<meta name="planner-build" content="r15-dynamic-profile-colors">
+<meta name="planner-build" content="r16-two-color-cell-badge">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" type="image/png" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
@@ -84,6 +84,24 @@
 @media(max-width:420px){.ocr-table tr{grid-template-columns:minmax(0,1fr)}.ocr-table td{grid-column:1/-1}.ocr-table input[type=date]{appearance:none;max-width:100%;min-width:0}.ocr-review .actions-grid{grid-template-columns:1fr}}
 .field input[type=color]{height:42px;padding:4px;cursor:pointer}.color-palette{display:grid;grid-template-columns:repeat(auto-fit,minmax(44px,1fr));justify-items:center;gap:8px;margin-top:8px}.color-choice{display:flex;min-width:0;flex-direction:column;align-items:center;gap:4px;color:#52697e;font-size:10px;font-weight:700;line-height:1.1;text-align:center}.color-swatch{position:relative;flex-shrink:0;width:34px;height:34px;padding:0;border:2px solid #d6e0e7;border-radius:50%;background:#fff;cursor:pointer}.color-swatch::before{content:'';position:absolute;inset:4px;border-radius:50%;background:var(--swatch)}.color-swatch[aria-pressed=true]{border-color:var(--navy);box-shadow:0 0 0 2px #d8e9f4}.color-swatch:focus-visible{outline:3px solid #2874ad;outline-offset:2px}.entry-subline{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:4px}.entry-type-tag{display:inline-block;margin-left:0;padding:2px 5px;border-radius:5px;background:#edf3f7;color:#405a70;font-size:10px;font-weight:800;vertical-align:middle}.entry-subline .status{margin-left:0}.chip.color-chip{background:var(--entry-color);color:var(--entry-ink)}.entry.has-color{border-left:4px solid var(--entry-color);padding-left:8px}.entry-color{display:inline-block;width:9px;height:9px;margin-right:5px;border-radius:50%;background:var(--entry-color);vertical-align:middle}
 </style>
+<style>
+.profile-row{grid-template-columns:minmax(130px,1.2fr) 84px 84px minmax(100px,1fr) minmax(100px,1fr)}
+.profile-color-palette{grid-column:1/-1;margin:0;padding-top:8px;border-top:1px solid var(--line)}
+.profile-palette-label{grid-column:1/-1;color:#52697e;font-size:10px;font-weight:800;text-align:left}
+.color-input-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.color-input-row input[type=color]{min-width:0}
+.color-reset{white-space:nowrap}
+.chip.gblue,.chip.he{background:transparent;color:inherit}
+.chip-code-type{display:block;width:100%;max-width:100%;margin:0 0 2px;padding:2px 4px;border-radius:4px;line-height:1.05}
+.chip.gblue .chip-code-type{background:var(--blue-bg);color:var(--blue)}
+.chip.he .chip-code-type{background:#eef2f5;color:#526576}
+.chip-code-type.custom-badge{background:var(--badge-color)!important;color:var(--badge-ink)!important}
+.chip.color-chip{background:var(--entry-color)!important;color:var(--entry-ink)!important}
+.day.color-day .chips .chip{background:transparent!important;color:var(--day-ink)!important}
+.day.color-day .chips .chip-code-type.custom-badge{background:var(--badge-color)!important;color:var(--badge-ink)!important}
+@media(max-width:700px){.profile-row{grid-template-columns:repeat(2,minmax(0,1fr))}.profile-field input{font-size:16px;min-height:42px}}
+@media(max-width:420px){.profile-row{gap:7px}}
+</style>
 </head>
 <body>
 <main>
@@ -104,7 +122,7 @@
         <div class="weekdays" aria-hidden="true"><div class="weekday">Lun</div><div class="weekday">Mar</div><div class="weekday">Mer</div><div class="weekday">Jeu</div><div class="weekday">Ven</div><div class="weekday">Sam</div><div class="weekday">Dim</div></div>
         <div class="days" id="days" role="grid" aria-label="Calendrier du mois"></div>
         <div class="legend"><span class="legend-item"><i class="dot"></i>Nuit / journée · code neutre</span><span class="legend-item"><i class="dot blue"></i>G bleu · garde</span><span class="legend-item"><i class="dot"></i>HE · confirmation manager</span></div>
-        <div class="add-hint">Touchez une date pour ajouter un service. Les jours avec une entrée restent modifiables.</div>
+        <div class="add-hint">Touchez le bandeau code/type pour modifier une entrée existante ; touchez le reste de la case pour en ajouter une autre.</div>
       </div>
     </section>
     <div class="privacy-note"><span aria-hidden="true">●</span><div><strong>Vos données restent dans ce navigateur.</strong> Les entrées sont sauvegardées localement sur cet appareil, sans compte ni synchronisation. Aucun planning n’est intégré à la page publiée.</div></div>
@@ -154,7 +172,7 @@
     </div>
     <section class="panel profile-panel" aria-labelledby="profilesHeading">
       <h2 id="profilesHeading">Mes profils réutilisables</h2>
-      <p>Renseigne une fois le code, sa couleur et ses horaires. Chaque profil propose toutes les pastilles de l’app ; « Couleur libre » garde aussi le sélecteur de ton appareil. La couleur du calendrier suit automatiquement le profil dont le code correspond à l’entrée. Dans le formulaire d’une date, choisis un profil pour reprendre son code, sa couleur et ses heures. Les profils restent vides tant que tu ne les complètes pas.</p>
+      <p>Renseigne une fois le code, les couleurs du fond de case et du bandeau code/type, puis les horaires. Chaque profil propose toute la palette ; le sélecteur libre accepte aussi les couleurs de ton appareil. Les entrées reprennent les deux couleurs du profil correspondant à leur code, sauf si tu choisis une couleur manuelle dans l’entrée.</p>
       <div class="profile-list" id="profileList" aria-label="Profils de codes et d’horaires"></div>
       <button class="secondary profile-add" id="addProfile" type="button">＋ Ajouter un profil</button>
       <p class="profile-status" id="profileStatus" role="status" aria-live="polite">Les profils sont enregistrés uniquement dans ce navigateur.</p>
@@ -168,13 +186,13 @@
     <input type="hidden" id="entryId">
     <div class="field"><label id="dateFieldLabel">Date</label><div class="date-label" id="selectedDateLabel"></div><input type="hidden" id="shiftDate"></div>
     <div class="field" id="copyDateField" hidden><label for="copyDate">Date de la copie</label><input id="copyDate" type="date"><div class="type-note">Les informations de cette entrée seront reprises à la date choisie. L’entrée d’origine ne sera pas modifiée.</div></div>
-    <div class="field"><label for="shiftPreset">Profil réutilisable (facultatif)</label><select id="shiftPreset"><option value="">Aucun profil choisi</option></select><div class="type-note">Les profils se règlent dans le cadre en bas de page ; le type Nuit/Journée reste à choisir pour chaque date.</div></div>
+    <div class="field"><label for="shiftPreset">Profil réutilisable (facultatif)</label><select id="shiftPreset"><option value="">Aucun profil choisi</option></select><div class="type-note">Le profil reprend le code, les couleurs et les heures. Le type Nuit/Journée reste indépendant.</div></div>
     <div class="field"><label for="shiftType">Type d’entrée</label><select id="shiftType"><option value="Nuit">Nuit</option><option value="Journée">Journée</option><option value="G bleu">G bleu · garde</option><option value="HE">HE · présence</option><option value="Autre">Autre / à clarifier</option></select><div class="type-note" id="typeNote">Pour les codes non confirmés, choisissez « Autre » et saisissez le libellé tel quel.</div></div>
     <div class="field"><label for="shiftCode">Code affiché sur le planning (facultatif)</label><input id="shiftCode" maxlength="40" placeholder="Saisir le code tel qu’il apparaît"></div>
     <div class="field"><label for="shiftPerson">Nom associé (facultatif)</label><input id="shiftPerson" maxlength="80" placeholder="À renseigner après l’import, si besoin"></div>
     <div class="field-row"><div class="field"><label for="shiftStart">Début (facultatif)</label><input id="shiftStart" type="time"></div><div class="field"><label for="shiftEnd">Fin (facultatif)</label><input id="shiftEnd" type="time"></div></div>
     <div class="field-row"><div class="field"><label for="shiftStatus">Statut</label><select id="shiftStatus"><option>Planifié</option><option>Confirmé par le manager</option><option>Demandé</option><option>À confirmer</option></select></div><div class="field"><label for="shiftBreak">Pause (facultatif)</label><input id="shiftBreak" maxlength="40" placeholder="Ex. 00:00–01:15"></div></div>
-    <div class="field"><label for="shiftColor">Couleur de l’entrée</label><input id="shiftColor" type="color" value="#2874ad" aria-describedby="shiftColorNote"><div class="color-palette" id="colorPalette" role="group" aria-label="Couleurs prédéfinies"></div><div class="type-note" id="shiftColorNote">La même palette complète est disponible ici et dans chaque profil. Le sélecteur au-dessus conserve les couleurs de votre appareil et permet une couleur libre. Choisir une couleur ne change pas le type Nuit/Journée.</div></div>
+    <div class="field"><label for="shiftColor">Couleur du fond de toute la case</label><div class="color-input-row"><input id="shiftColor" type="color" value="#2874ad" aria-describedby="shiftColorNote"><button class="secondary color-reset" id="resetCellColor" type="button">Profil</button></div><div class="color-palette" id="colorPalette" role="group" aria-label="Couleurs prédéfinies pour le fond de la case"></div><div class="type-note" id="shiftColorNote">Cette couleur remplit la case du calendrier. « Profil » reprend la couleur du profil associé au code.</div></div><div class="field"><label for="shiftBadgeColor">Couleur du bandeau code/type</label><div class="color-input-row"><input id="shiftBadgeColor" type="color" value="#FFFFFF" aria-describedby="shiftBadgeColorNote"><button class="secondary color-reset" id="resetBadgeColor" type="button">Profil / type</button></div><div class="color-palette" id="badgeColorPalette" role="group" aria-label="Couleurs prédéfinies pour le bandeau code/type"></div><div class="type-note" id="shiftBadgeColorNote">Cette couleur s’applique au bandeau où le code apparaît au-dessus du type. Le texte passe automatiquement en clair ou foncé selon le contraste.</div></div>
     <div class="field"><label for="shiftNote">Note personnelle (facultatif)</label><textarea id="shiftNote" maxlength="300" placeholder="Équipe, personne en binôme, détail utile…"></textarea></div>
     <div class="form-actions"><div class="right-actions"><button class="secondary" id="cancelDialog" type="button">Annuler</button><button class="primary" id="saveEntry" type="submit">Enregistrer</button></div></div>
   </form>
@@ -203,6 +221,7 @@
   let entries = loadEntries();
   let profiles = loadProfiles();
   let manualEntryColor = false;
+  let manualBadgeColor = false;
   let copyMode = false;
   let currentFileUrl = null;
   let heicConverterPromise = null;
@@ -235,11 +254,11 @@
 
   function loadEntries(){try{const raw=localStorage.getItem(STORE_KEY);const value=raw?JSON.parse(raw):[];return Array.isArray(value)?value.filter(x=>x&&x.id&&validDate(x.date)&&typeof x.type==='string').map(normalizedEntry):[]}catch(e){return []}}
   function saveEntries(){try{localStorage.setItem(STORE_KEY,JSON.stringify(entries));const stamp=new Intl.DateTimeFormat('fr-FR',{hour:'2-digit',minute:'2-digit'}).format(new Date());$('saveStatus').textContent=`Enregistré automatiquement à ${stamp}`;return true}catch(e){$('saveStatus').textContent='Échec de sauvegarde locale';showToast('Impossible d’enregistrer : le stockage local du navigateur est indisponible.');return false}}
-  function emptyProfiles(){return Array.from({length:7},()=>({code:'',color:'',start:'',end:''}))}
-  function normalizedProfile(item){item=item&&typeof item==='object'?item:{};return{code:typeof item.code==='string'?item.code.slice(0,40):'',color:safeColor(item.color),start:/^\d{2}:\d{2}$/.test(item.start||'')?item.start:'',end:/^\d{2}:\d{2}$/.test(item.end||'')?item.end:''}}
+  function emptyProfiles(){return Array.from({length:7},()=>({code:'',color:'',badgeColor:'',start:'',end:''}))}
+  function normalizedProfile(item){item=item&&typeof item==='object'?item:{};return{code:typeof item.code==='string'?item.code.slice(0,40):'',color:safeColor(item.color),badgeColor:safeColor(item.badgeColor),start:/^\d{2}:\d{2}$/.test(item.start||'')?item.start:'',end:/^\d{2}:\d{2}$/.test(item.end||'')?item.end:''}}
   function loadProfiles(){try{const value=JSON.parse(localStorage.getItem(PROFILE_KEY)||'null');return Array.isArray(value)?value.slice(0,MAX_PROFILES).map(normalizedProfile):emptyProfiles()}catch(e){return emptyProfiles()}}
   function saveProfiles(){try{localStorage.setItem(PROFILE_KEY,JSON.stringify(profiles));$('profileStatus').textContent='Profils enregistrés uniquement dans ce navigateur.';return true}catch(e){$('profileStatus').textContent='Impossible de sauvegarder les profils sur cet appareil.';return false}}
-  function addProfile(){if(profiles.length>=MAX_PROFILES){showToast(`Limite de ${MAX_PROFILES} profils atteinte.`);return}profiles.push({code:'',color:'',start:'',end:''});if(!saveProfiles()){profiles.pop();return}renderProfiles();const input=$(`profileCode${profiles.length-1}`);input?.focus();input?.scrollIntoView?.({behavior:'smooth',block:'center'})}
+  function addProfile(){if(profiles.length>=MAX_PROFILES){showToast(`Limite de ${MAX_PROFILES} profils atteinte.`);return}profiles.push({code:'',color:'',badgeColor:'',start:'',end:''});if(!saveProfiles()){profiles.pop();return}renderProfiles();const input=$(`profileCode${profiles.length-1}`);input?.focus();input?.scrollIntoView?.({behavior:'smooth',block:'center'})}
   function colorPaletteMarkup(selectedColor=''){
     const selected=safeColor(selectedColor);
     return COLOR_PALETTE.map(({color,name})=>`<span class="color-choice"><button class="color-swatch" type="button" data-color="${color}" style="--swatch:${color}" aria-label="${name}" aria-pressed="${color===selected}" title="${name}"></button><span>${name}</span></span>`).join('');
@@ -249,17 +268,20 @@
     palette.querySelectorAll('[data-color]').forEach(button=>button.setAttribute('aria-pressed',String(safeColor(button.dataset.color)===selected)));
   }
   function renderProfiles(){
-    $('profileList').innerHTML=profiles.map((profile,index)=>`<div class="profile-row" data-profile-index="${index}" role="group" aria-label="Profil ${index+1}"><div class="profile-field profile-code"><label for="profileCode${index}">Profil ${index+1} · Code</label><input id="profileCode${index}" type="text" maxlength="40" autocomplete="off" data-profile-field="code" value="${safeText(profile.code)}" placeholder="Ex. N2"></div><div class="profile-field"><label for="profileColor${index}">Couleur libre</label><input id="profileColor${index}" type="color" data-profile-field="color" value="${safeText(profile.color||'#FFFFFF')}" aria-label="Couleur libre du profil ${index+1}"></div><div class="profile-field"><label for="profileStart${index}">Début</label><input id="profileStart${index}" type="time" data-profile-field="start" value="${safeText(profile.start)}" aria-label="Début du profil ${index+1}"></div><div class="profile-field"><label for="profileEnd${index}">Fin</label><input id="profileEnd${index}" type="time" data-profile-field="end" value="${safeText(profile.end)}" aria-label="Fin du profil ${index+1}"></div><div class="color-palette profile-color-palette" role="group" aria-label="Couleurs prédéfinies du profil ${index+1}">${colorPaletteMarkup(profile.color)}</div></div>`).join('');
+    $('profileList').innerHTML=profiles.map((profile,index)=>`<div class="profile-row" data-profile-index="${index}" role="group" aria-label="Profil ${index+1}"><div class="profile-field profile-code"><label for="profileCode${index}">Profil ${index+1} · Code</label><input id="profileCode${index}" type="text" maxlength="40" autocomplete="off" data-profile-field="code" value="${safeText(profile.code)}" placeholder="Ex. N2"></div><div class="profile-field"><label for="profileColor${index}">Fond de case</label><input id="profileColor${index}" type="color" data-profile-field="color" value="${safeText(profile.color||'#FFFFFF')}" aria-label="Couleur du fond de case du profil ${index+1}"></div><div class="profile-field"><label for="profileBadgeColor${index}">Bandeau code/type</label><input id="profileBadgeColor${index}" type="color" data-profile-field="badgeColor" value="${safeText(profile.badgeColor||'#FFFFFF')}" aria-label="Couleur du bandeau code/type du profil ${index+1}"></div><div class="profile-field"><label for="profileStart${index}">Début</label><input id="profileStart${index}" type="time" data-profile-field="start" value="${safeText(profile.start)}" aria-label="Début du profil ${index+1}"></div><div class="profile-field"><label for="profileEnd${index}">Fin</label><input id="profileEnd${index}" type="time" data-profile-field="end" value="${safeText(profile.end)}" aria-label="Fin du profil ${index+1}"></div><div class="color-palette profile-color-palette" data-profile-color-field="color" role="group" aria-label="Palette du fond de case du profil ${index+1}"><span class="profile-palette-label">Palette du fond</span>${colorPaletteMarkup(profile.color)}</div><div class="color-palette profile-color-palette" data-profile-color-field="badgeColor" role="group" aria-label="Palette du bandeau code/type du profil ${index+1}"><span class="profile-palette-label">Palette du bandeau</span>${colorPaletteMarkup(profile.badgeColor)}</div></div>`).join('');
     updateProfileOptions();
   }
   function updateProfileOptions(){const select=$('shiftPreset');if(!select)return;const selected=select.value,active=profiles.map((profile,index)=>({profile,index})).filter(item=>item.profile.code.trim());select.innerHTML='<option value="">Aucun profil choisi</option>'+active.map(item=>`<option value="${item.index}">Profil ${item.index+1} · ${safeText(item.profile.code.trim())}</option>`).join('');if(active.some(item=>String(item.index)===selected))select.value=selected}
-  function applySelectedProfile(){const value=$('shiftPreset').value;if(value==='')return;const profile=profiles[Number(value)];if(!profile?.code.trim())return;$('shiftCode').value=profile.code.trim();$('shiftColor').value=profile.color||'#2874ad';manualEntryColor=false;$('shiftStart').value=profile.start;$('shiftEnd').value=profile.end;updateColorPalette()}
+  function applySelectedProfile(){const value=$('shiftPreset').value;if(value==='')return;const profile=profiles[Number(value)];if(!profile?.code.trim())return;$('shiftCode').value=profile.code.trim();manualEntryColor=false;manualBadgeColor=false;syncCodeProfileColors();$('shiftStart').value=profile.start;$('shiftEnd').value=profile.end}
   function safeText(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
   function safeColor(value){return typeof value==='string'&&/^#[0-9a-fA-F]{6}$/.test(value)?value.toUpperCase():''}
   function colorInk(value){const color=safeColor(value);if(!color)return '#183149';const luminance=hex=>{const channels=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255).map(c=>c<=.04045?c/12.92:((c+.055)/1.055)**2.4);return .2126*channels[0]+.7152*channels[1]+.0722*channels[2]};const background=luminance(color),whiteContrast=1.05/(background+.05),blackContrast=(background+.05)/.05;return whiteContrast>=blackContrast?'#fff':'#000'}
-  function profileForCode(code){const key=String(code||'').trim().toLocaleUpperCase('fr-FR');if(!key)return null;return profiles.find(profile=>String(profile.code||'').trim().toLocaleUpperCase('fr-FR')===key&&safeColor(profile.color))||null}
-  function entryColor(entry){return entry?.colorSource==='manual'?safeColor(entry.color):(profileForCode(entry?.code)?.color||safeColor(entry?.color))}
-  function normalizedEntry(entry){const color=safeColor(entry.color),normalized={...entry,colorSource:entry.colorSource==='manual'?'manual':'auto'};if(color)return{...normalized,color};delete normalized.color;return normalized}
+  function profileForCode(code){const key=String(code||'').trim().toLocaleUpperCase('fr-FR');if(!key)return null;return profiles.find(profile=>String(profile.code||'').trim().toLocaleUpperCase('fr-FR')===key&&(safeColor(profile.color)||safeColor(profile.badgeColor)))||null}
+  function entryColor(entry){return entry?.colorSource==='manual'?safeColor(entry.color):(safeColor(profileForCode(entry?.code)?.color)||safeColor(entry?.color))}
+  function entryBadgeColor(entry){return entry?.badgeColorSource==='manual'?safeColor(entry.badgeColor):(safeColor(profileForCode(entry?.code)?.badgeColor)||safeColor(entry?.badgeColor))}
+  function defaultBadgeColor(entry){return entry?.type==='G bleu'?'#E8F3FB':entry?.type==='HE'?'#EEF2F5':''}
+  function defaultBadgeInk(entry){return entry?.type==='G bleu'?'#2874ad':entry?.type==='HE'?'#526576':''}
+  function normalizedEntry(entry){const normalized={...entry,colorSource:entry.colorSource==='manual'?'manual':'auto',badgeColorSource:entry.badgeColorSource==='manual'?'manual':'auto'},color=safeColor(entry.color),badgeColor=safeColor(entry.badgeColor);if(color)normalized.color=color;else delete normalized.color;if(badgeColor)normalized.badgeColor=badgeColor;else delete normalized.badgeColor;return normalized}
   function dateFromKey(key){const [y,m,d]=key.split('-').map(Number);return new Date(y,m-1,d)}
   function keyFromDate(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
   function monthKey(){return `${view.getFullYear()}-${String(view.getMonth()+1).padStart(2,'0')}`}
@@ -299,7 +321,7 @@
     for(let i=0;i<offset;i++)html+='<div class="day empty" aria-hidden="true"></div>';
     for(let d=1;d<=daysInMonth;d++){
       const date=new Date(year,month,d),key=keyFromDate(date),items=byDate.get(key)||[];
-      const chips=items.slice(0,2).map(e=>{const color=entryColor(e),code=String(e.code||'').trim(),details=[e.person,e.start].filter(Boolean).join(' · ');const style=color?` style="--entry-color:${color};--entry-ink:${colorInk(color)}"`:'';return `<span class="chip ${typeClass(e)}${color?' color-chip':''}"${style}><span class="chip-code">${safeText(code||e.type)}</span>${code&&code!==e.type?`<span class="chip-type">${safeText(e.type)}</span>`:''}${details?`<span class="chip-detail">${safeText(details)}</span>`:''}</span>`}).join('');
+      const chips=items.slice(0,2).map(e=>{const color=entryColor(e),customBadgeColor=entryBadgeColor(e),code=String(e.code||'').trim(),details=[e.person,e.start].filter(Boolean).join(' · '),styleParts=[];if(color)styleParts.push(`--entry-color:${color};--entry-ink:${colorInk(color)}`);if(customBadgeColor)styleParts.push(`--badge-color:${customBadgeColor};--badge-ink:${colorInk(customBadgeColor)}`);const style=styleParts.length?` style="${styleParts.join(';')}"`:'';return `<span class="chip ${typeClass(e)}${color?' color-chip':''}" data-entry-id="${safeText(e.id)}"${style}><span class="chip-code-type${customBadgeColor?' custom-badge':''}"><span class="chip-code">${safeText(code||e.type)}</span>${code&&code!==e.type?`<span class="chip-type">${safeText(e.type)}</span>`:''}</span>${details?`<span class="chip-detail">${safeText(details)}</span>`:''}</span>`}).join('');
       const more=items.length>2?`<span class="more">+${items.length-2}</span>`:'';
       const dayColor=items.length===1?entryColor(items[0]):'',dayInk=dayColor?colorInk(dayColor):'',dayStyle=dayColor?` style="--day-color:${dayColor};--day-ink:${dayInk}"`:'';
       html+=`<button class="day ${key===todayKey?'today':''}${dayColor?' color-day':''}"${dayStyle} type="button" data-date="${key}" aria-label="${safeText(longFmt.format(date))}${items.length?`, ${items.length} entrée${items.length>1?'s':''}`:''}"><span class="day-num">${d}</span><span class="chips">${chips}${more}</span></button>`;
@@ -307,7 +329,7 @@
     const remainder=(7-(offset+daysInMonth)%7)%7;
     for(let i=0;i<remainder;i++)html+='<div class="day empty" aria-hidden="true"></div>';
     dom.days.innerHTML=html;
-    dom.days.querySelectorAll('[data-date]').forEach(btn=>btn.addEventListener('click',()=>openForm(btn.dataset.date)));
+    dom.days.querySelectorAll('[data-date]').forEach(btn=>btn.addEventListener('click',event=>{const chip=event.target.closest('[data-entry-id]');if(chip){const item=entries.find(e=>e.id===chip.dataset.entryId);if(item){openForm(item.date,item);return}}openForm(btn.dataset.date)}));
     renderEntries();renderCounts();
   }
   function renderCounts(){
@@ -331,51 +353,55 @@
   }
   function typeDescription(type){
     if(type==='G bleu')return 'G bleu : selon votre compréhension, garde en binôme avec un·e apprenti·e, stagiaire ou nouvelle recrue.';
-    if(type==='HE')return 'HE : présence hors effectif. Ajoutez l’heure et le statut après confirmation du manager ; aucune heure n’est présélectionnée.';
+    if(type==='HE')return 'Le code HE et le type sont indépendants. Si cette entrée doit compter comme une journée, choisissez « Journée » dans le menu Type d’entrée.';
     if(type==='Autre')return 'Code non documenté : saisissez le libellé tel qu’il figure sur le planning, sans lui attribuer de couleur ou de sens.';
     return 'Saisissez uniquement les heures confirmées. Le code du tableau est facultatif.';
   }
   function openForm(dateKey,entry=null){
-    copyMode=false;manualEntryColor=entry?.colorSource==='manual';$('copyDateField').hidden=true;$('copyDate').required=false;$('copyDate').value='';$('dateFieldLabel').textContent='Date';$('dialogSubtitle').textContent=entry?'Modifiez ou supprimez cette entrée. Le bouton rouge « Supprimer » est en haut à droite.':'Saisie privée, enregistrée dans ce navigateur. Pour supprimer une entrée existante, ouvrez « Modifier » dans la liste.';$('saveEntry').textContent='Enregistrer';
+    copyMode=false;manualEntryColor=entry?.colorSource==='manual';manualBadgeColor=entry?.badgeColorSource==='manual';$('copyDateField').hidden=true;$('copyDate').required=false;$('copyDate').value='';$('dateFieldLabel').textContent='Date';$('dialogSubtitle').textContent=entry?'Modifiez ou supprimez cette entrée. Le bouton rouge « Supprimer » est en haut à droite.':'Saisie privée, enregistrée dans ce navigateur. Pour supprimer une entrée existante, ouvrez « Modifier » dans la liste.';$('saveEntry').textContent='Enregistrer';
     $('shiftPreset').value='';
     $('entryId').value=entry?.id||'';$('shiftDate').value=dateKey;$('selectedDateLabel').textContent=longFmt.format(dateFromKey(dateKey));
     $('dialogTitle').textContent=entry?'Modifier l’entrée':'Ajouter une entrée';
-    $('shiftType').value=entry?.type||'Nuit';$('shiftCode').value=entry?.code||'';$('shiftStart').value=entry?.start||'';$('shiftEnd').value=entry?.end||'';$('shiftStatus').value=entry?.status||((entry?.type==='HE')?'À confirmer':'Planifié');$('shiftBreak').value=entry?.break||'';$('shiftNote').value=entry?.note||'';$('shiftPerson').value=entry?.person||'';$('shiftColor').value=entryColor(entry)||'#2874ad';updateColorPalette();
+    $('shiftType').value=entry?.type||'Nuit';$('shiftCode').value=entry?.code||'';$('shiftStart').value=entry?.start||'';$('shiftEnd').value=entry?.end||'';$('shiftStatus').value=entry?.status||((entry?.type==='HE')?'À confirmer':'Planifié');$('shiftBreak').value=entry?.break||'';$('shiftNote').value=entry?.note||'';$('shiftPerson').value=entry?.person||'';$('shiftColor').value=entryColor(entry)||'#2874ad';$('shiftBadgeColor').value=entryBadgeColor(entry)||defaultBadgeColor(entry)||'#FFFFFF';updateColorPalettes();
     $('deleteEntry').hidden=!entry;$('typeNote').textContent=typeDescription($('shiftType').value);
     dom.dialog.showModal();
   }
   function openCopyForm(entry){openForm(entry.date,entry);copyMode=true;$('dialogTitle').textContent='Copier une entrée';$('dialogSubtitle').textContent='Choisissez une autre date ; l’entrée d’origine ne sera pas modifiée.';$('dateFieldLabel').textContent='Date d’origine';$('entryId').value='';$('deleteEntry').hidden=true;$('copyDateField').hidden=false;$('copyDate').required=true;$('saveEntry').textContent='Créer la copie'}
   function closeForm(){dom.dialog.close();copyMode=false}
-  $('shiftType').addEventListener('change',()=>{$('typeNote').textContent=typeDescription($('shiftType').value);if($('shiftType').value==='HE'&&!$('entryId').value)$('shiftStatus').value='À confirmer';if($('shiftType').value==='G bleu'&&!$('shiftCode').value)$('shiftCode').value='G bleu';if($('shiftType').value==='HE'&&!$('shiftCode').value)$('shiftCode').value='HE'});
-  function updateColorPalette(){updatePaletteSelection($('colorPalette'),$('shiftColor').value)}
-  function syncCodeProfileColor(){if(manualEntryColor)return;const profile=profileForCode($('shiftCode').value);$('shiftColor').value=profile?.color||'#2874ad';updateColorPalette()}
-  $('shiftCode').addEventListener('input',syncCodeProfileColor);
-  $('colorPalette').addEventListener('click',event=>{const button=event.target.closest('[data-color]');if(!button)return;manualEntryColor=true;$('shiftColor').value=button.dataset.color;updateColorPalette()});
-  $('shiftColor').addEventListener('input',()=>{manualEntryColor=true;updateColorPalette()});$('shiftColor').addEventListener('change',()=>{manualEntryColor=true;updateColorPalette()});
+  $('shiftType').addEventListener('change',()=>{$('typeNote').textContent=typeDescription($('shiftType').value);if($('shiftType').value==='HE'&&!$('entryId').value)$('shiftStatus').value='À confirmer';if($('shiftType').value==='G bleu'&&!$('shiftCode').value)$('shiftCode').value='G bleu';if($('shiftType').value==='HE'&&!$('shiftCode').value)$('shiftCode').value='HE';if(!manualBadgeColor)syncCodeProfileColors()});
+  function updateColorPalettes(){updatePaletteSelection($('colorPalette'),$('shiftColor').value);updatePaletteSelection($('badgeColorPalette'),$('shiftBadgeColor').value)}
+  function syncCodeProfileColors(){const profile=profileForCode($('shiftCode').value);if(!manualEntryColor)$('shiftColor').value=profile?.color||'#2874ad';if(!manualBadgeColor)$('shiftBadgeColor').value=profile?.badgeColor||defaultBadgeColor({type:$('shiftType').value})||'#FFFFFF';updateColorPalettes()}
+  $('shiftCode').addEventListener('input',syncCodeProfileColors);
+  $('colorPalette').addEventListener('click',event=>{const button=event.target.closest('[data-color]');if(!button)return;manualEntryColor=true;$('shiftColor').value=button.dataset.color;updateColorPalettes()});
+  $('badgeColorPalette').addEventListener('click',event=>{const button=event.target.closest('[data-color]');if(!button)return;manualBadgeColor=true;$('shiftBadgeColor').value=button.dataset.color;updateColorPalettes()});
+  $('shiftColor').addEventListener('input',()=>{manualEntryColor=true;updateColorPalettes()});$('shiftColor').addEventListener('change',()=>{manualEntryColor=true;updateColorPalettes()});
+  $('shiftBadgeColor').addEventListener('input',()=>{manualBadgeColor=true;updateColorPalettes()});$('shiftBadgeColor').addEventListener('change',()=>{manualBadgeColor=true;updateColorPalettes()});
+  $('resetCellColor').addEventListener('click',()=>{manualEntryColor=false;syncCodeProfileColors()});
+  $('resetBadgeColor').addEventListener('click',()=>{manualBadgeColor=false;syncCodeProfileColors()});
   function updateProfileInput(event){
     const input=event.target.closest('[data-profile-field]');if(!input)return;
     const row=input.closest('[data-profile-index]'),index=Number(row?.dataset.profileIndex),field=input.dataset.profileField;
-    if(!Number.isInteger(index)||index<0||index>=profiles.length||!['code','color','start','end'].includes(field))return;
-    profiles[index][field]=field==='color'?safeColor(input.value):input.value;
-    if(field==='color')updatePaletteSelection(row.querySelector('.color-palette'),profiles[index].color);
-    if(saveProfiles()){updateProfileOptions();if(field==='code'||field==='color')render()}
+    if(!Number.isInteger(index)||index<0||index>=profiles.length||!['code','color','badgeColor','start','end'].includes(field))return;
+    profiles[index][field]=(field==='color'||field==='badgeColor')?safeColor(input.value):input.value;
+    if(field==='color'||field==='badgeColor')updatePaletteSelection(row.querySelector(`[data-profile-color-field="${field}"]`),profiles[index][field]);
+    if(saveProfiles()){updateProfileOptions();if(field==='code'||field==='color'||field==='badgeColor')render()}
   }
   $('profileList').addEventListener('input',updateProfileInput);
   $('profileList').addEventListener('change',updateProfileInput);
   $('profileList').addEventListener('click',event=>{
     const button=event.target.closest('[data-color]');if(!button)return;
-    const row=button.closest('[data-profile-index]'),index=Number(row?.dataset.profileIndex),color=safeColor(button.dataset.color);
-    if(!Number.isInteger(index)||index<0||index>=profiles.length||!color)return;
-    profiles[index].color=color;row.querySelector('[data-profile-field="color"]').value=color;
-    updatePaletteSelection(row.querySelector('.color-palette'),color);
+    const row=button.closest('[data-profile-index]'),palette=button.closest('[data-profile-color-field]'),field=palette?.dataset.profileColorField,index=Number(row?.dataset.profileIndex),color=safeColor(button.dataset.color);
+    if(!Number.isInteger(index)||index<0||index>=profiles.length||!color||!['color','badgeColor'].includes(field))return;
+    profiles[index][field]=color;row.querySelector(`[data-profile-field="${field}"]`).value=color;
+    updatePaletteSelection(palette,color);
     if(saveProfiles()){updateProfileOptions();render()}
   });
   $('addProfile').addEventListener('click',addProfile);
   $('shiftPreset').addEventListener('change',applySelectedProfile);
   $('shiftForm').addEventListener('submit',e=>{
     e.preventDefault();const id=$('entryId').value||`${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
-    if(copyMode){const targetDate=$('copyDate').value;if(!validDate(targetDate)){ $('copyDate').reportValidity();return}if(targetDate===$('shiftDate').value){showToast('Choisissez une date différente de la date d’origine.');return}const copied={id,date:targetDate,type:$('shiftType').value,code:$('shiftCode').value.trim(),start:$('shiftStart').value,end:$('shiftEnd').value,status:$('shiftStatus').value,break:$('shiftBreak').value.trim(),note:$('shiftNote').value.trim(),person:$('shiftPerson').value.trim(),color:safeColor($('shiftColor').value)||'#2874ad',colorSource:manualEntryColor?'manual':'auto'};const previous=entries;entries=[...entries,copied];if(saveEntries()){const date=dateFromKey(targetDate);view=new Date(date.getFullYear(),date.getMonth(),1);render();closeForm();showToast('Copie ajoutée au calendrier.')}else entries=previous;return}
-    const obj={id,date:$('shiftDate').value,type:$('shiftType').value,code:$('shiftCode').value.trim(),start:$('shiftStart').value,end:$('shiftEnd').value,status:$('shiftStatus').value,break:$('shiftBreak').value.trim(),note:$('shiftNote').value.trim(),person:$('shiftPerson').value.trim(),color:safeColor($('shiftColor').value)||'#2874ad',colorSource:manualEntryColor?'manual':'auto'};
+    if(copyMode){const targetDate=$('copyDate').value;if(!validDate(targetDate)){ $('copyDate').reportValidity();return}if(targetDate===$('shiftDate').value){showToast('Choisissez une date différente de la date d’origine.');return}const copied={id,date:targetDate,type:$('shiftType').value,code:$('shiftCode').value.trim(),start:$('shiftStart').value,end:$('shiftEnd').value,status:$('shiftStatus').value,break:$('shiftBreak').value.trim(),note:$('shiftNote').value.trim(),person:$('shiftPerson').value.trim(),color:safeColor($('shiftColor').value)||'#2874ad',colorSource:manualEntryColor?'manual':'auto',badgeColor:manualBadgeColor?safeColor($('shiftBadgeColor').value):'',badgeColorSource:manualBadgeColor?'manual':'auto'};const previous=entries;entries=[...entries,copied];if(saveEntries()){const date=dateFromKey(targetDate);view=new Date(date.getFullYear(),date.getMonth(),1);render();closeForm();showToast('Copie ajoutée au calendrier.')}else entries=previous;return}
+    const obj={id,date:$('shiftDate').value,type:$('shiftType').value,code:$('shiftCode').value.trim(),start:$('shiftStart').value,end:$('shiftEnd').value,status:$('shiftStatus').value,break:$('shiftBreak').value.trim(),note:$('shiftNote').value.trim(),person:$('shiftPerson').value.trim(),color:safeColor($('shiftColor').value)||'#2874ad',colorSource:manualEntryColor?'manual':'auto',badgeColor:manualBadgeColor?safeColor($('shiftBadgeColor').value):'',badgeColorSource:manualBadgeColor?'manual':'auto'};
     const previous=entries;entries=[...entries];const idx=entries.findIndex(x=>x.id===id);if(idx>=0)entries[idx]=obj;else entries.push(obj);
     if(saveEntries()){render();closeForm();showToast(idx>=0?'Entrée mise à jour.':'Entrée enregistrée dans ce navigateur.')}else entries=previous;
   });
@@ -408,16 +434,16 @@
     const weekdayY=282,weekdayH=42,gridY=332,footerY=1585,cellHeight=(footerY-gridY-gap*(rows-1))/rows,weekdays=['LUN','MAR','MER','JEU','VEN','SAM','DIM'];ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='800 16px Arial,sans-serif';
     weekdays.forEach((label,i)=>{const x=margin+i*(columnWidth+gap);roundedRect(ctx,x,weekdayY,columnWidth,weekdayH,10);ctx.fillStyle='#f2f6f9';ctx.fill();ctx.fillStyle='#718396';ctx.fillText(label,x+columnWidth/2,weekdayY+weekdayH/2)});
     for(let day=1;day<=daysInMonth;day++){
-      const index=offset+day-1,row=Math.floor(index/7),col=index%7,x=margin+col*(columnWidth+gap),y=gridY+row*(cellHeight+gap),key=keyFromDate(new Date(year,month,day)),items=byDate.get(key)||[],dayColor=items.length===1?safeColor(items[0].color):'',dayInk=dayColor?colorInk(dayColor):'#63768a';
+      const index=offset+day-1,row=Math.floor(index/7),col=index%7,x=margin+col*(columnWidth+gap),y=gridY+row*(cellHeight+gap),key=keyFromDate(new Date(year,month,day)),items=byDate.get(key)||[],dayColor=items.length===1?entryColor(items[0]):'',dayInk=dayColor?colorInk(dayColor):'#63768a';
       roundedRect(ctx,x,y,columnWidth,cellHeight,12);ctx.fillStyle=dayColor||'#fff';ctx.fill();ctx.lineWidth=key===todayKey?2.5:1;ctx.strokeStyle=dayColor|| (key===todayKey?'#a8c7dc':'#e3eaf0');ctx.stroke();
       ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillStyle=dayInk;ctx.font='800 20px Arial,sans-serif';ctx.fillText(String(day),x+10,y+25);
       items.slice(0,2).forEach((entry,idx)=>{
-        const color=safeColor(entry.color),typeClassName=typeClass(entry),singleColor=items.length===1&&Boolean(color),background=color|| (typeClassName==='gblue'?'#e8f3fb':typeClassName==='he'?'#eef2f5':'#eff2f5'),ink=singleColor?colorInk(color):color?colorInk(color):(typeClassName==='gblue'?'#2874ad':'#506274'),code=String(entry.code||'').trim()||entry.type,chipX=x+8,chipY=y+43+idx*52,chipW=columnWidth-16,chipH=46;
-        if(chipY+chipH<y+cellHeight-6){roundedRect(ctx,chipX,chipY,chipW,chipH,7);if(!singleColor){ctx.fillStyle=background;ctx.fill()}ctx.fillStyle=ink;ctx.textAlign='left';if(String(entry.code||'').trim()&&String(entry.code).trim()!==entry.type){ctx.font='800 15px Arial,sans-serif';ctx.textBaseline='top';ctx.fillText(fitCanvasText(ctx,code,chipW-14),chipX+7,chipY+5);ctx.font='700 12px Arial,sans-serif';ctx.fillText(fitCanvasText(ctx,entry.type,chipW-14),chipX+7,chipY+26)}else{ctx.font='800 14px Arial,sans-serif';ctx.textBaseline='middle';ctx.fillText(fitCanvasText(ctx,code,chipW-14),chipX+7,chipY+chipH/2)}}});
+        const color=entryColor(entry),typeClassName=typeClass(entry),singleColor=items.length===1&&Boolean(color),background=color||'#eff2f5',ink=singleColor?colorInk(color):color?colorInk(color):'#506274',customBadgeColor=entryBadgeColor(entry),badgeColor=customBadgeColor||defaultBadgeColor(entry),badgeInk=customBadgeColor?colorInk(customBadgeColor):defaultBadgeInk(entry)||ink,code=String(entry.code||'').trim()||entry.type,hasType=String(entry.code||'').trim()&&String(entry.code).trim()!==entry.type,chipX=x+8,chipY=y+43+idx*52,chipW=columnWidth-16,chipH=46,badgeH=hasType?37:27;
+        if(chipY+chipH<y+cellHeight-6){roundedRect(ctx,chipX,chipY,chipW,chipH,7);if(!singleColor){ctx.fillStyle=background;ctx.fill()}if(badgeColor){roundedRect(ctx,chipX+3,chipY+3,chipW-6,badgeH,5);ctx.fillStyle=badgeColor;ctx.fill()}ctx.fillStyle=badgeColor?badgeInk:ink;ctx.textAlign='left';if(hasType){ctx.font='800 15px Arial,sans-serif';ctx.textBaseline='top';ctx.fillText(fitCanvasText(ctx,code,chipW-14),chipX+7,chipY+5);ctx.font='700 12px Arial,sans-serif';ctx.fillText(fitCanvasText(ctx,entry.type,chipW-14),chipX+7,chipY+26)}else{ctx.font='800 14px Arial,sans-serif';ctx.textBaseline='middle';ctx.fillText(fitCanvasText(ctx,code,chipW-14),chipX+7,chipY+chipH/2)}}});
       if(items.length>2){ctx.fillStyle=dayInk;ctx.font='800 14px Arial,sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(`+${items.length-2} services`,x+9,y+cellHeight-10)}
     }
     ctx.strokeStyle='#e3eaf0';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(margin,1605);ctx.lineTo(width-margin,1605);ctx.stroke();
-    ctx.fillStyle='#53687a';ctx.font='15px Arial,sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText('Le code apparaît au-dessus du type ; les couleurs suivent vos choix.',margin,1638);
+    ctx.fillStyle='#53687a';ctx.font='15px Arial,sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText('Le code apparaît au-dessus du type ; le fond et le bandeau ont des couleurs séparées.',margin,1638);
     ctx.fillStyle='#708397';ctx.font='14px Arial,sans-serif';ctx.fillText('Export créé localement sur cet appareil · le planning n’est pas envoyé.',margin,1700);
     return canvas;
   }
@@ -721,6 +747,7 @@
   if(window.matchMedia('(display-mode: standalone)').matches)$('installCard').hidden=true;
   if('serviceWorker' in navigator&&location.protocol==='https:'){navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'}).then(registration=>{registration.update().catch(()=>{});return navigator.serviceWorker.ready}).then(()=>{$('offlineStatus').textContent='Calendrier et saisie préparés pour une ouverture hors connexion. Les outils OCR/HEIC peuvent encore nécessiter Internet ; les photos restent locales.'}).catch(()=>{$('offlineStatus').textContent='Le mode hors connexion n’a pas pu se préparer. L’app reste utilisable en ligne ; les photos restent locales.'})}
   $('colorPalette').innerHTML=colorPaletteMarkup($('shiftColor').value);
+  $('badgeColorPalette').innerHTML=colorPaletteMarkup($('shiftBadgeColor').value);
   renderProfiles();
   render();
 })();

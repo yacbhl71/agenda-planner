@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'planner-shell-v14-dynamic-profile-colors';
+const SHELL_CACHE = 'planner-shell-v15-two-color-cell-badge';
 const SHELL_ASSETS = [
   './',
   './index.html',
