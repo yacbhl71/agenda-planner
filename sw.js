@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'planner-shell-v2-person-month-color';
+const SHELL_CACHE = 'planner-shell-v3-local-save-ocr-review';
 const SHELL_ASSETS = [
   './',
   './index.html',
