@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'planner-shell-v11-monthly-report';
+const SHELL_CACHE = 'planner-shell-v12-shared-profile-palette';
 const SHELL_ASSETS = [
   './',
   './index.html',

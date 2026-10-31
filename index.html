@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#143451">
 <meta name="application-name" content="Mon planning">
-<meta name="planner-build" content="r13-browser-aware-install">
+<meta name="planner-build" content="r14-shared-profile-palette">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" type="image/png" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
@@ -23,17 +23,19 @@
 .day.color-day .chips .chip{background:transparent!important;color:var(--day-ink)!important}
 .profile-panel{margin-top:16px}
 .profile-list{display:grid;gap:8px}
-.profile-row{display:grid;grid-template-columns:minmax(130px,1.2fr) 58px minmax(100px,1fr) minmax(100px,1fr);gap:9px;align-items:end;padding:9px;border:1px solid var(--line);border-radius:11px;background:#fbfcfe}
+.profile-row{display:grid;grid-template-columns:minmax(130px,1.2fr) 84px minmax(100px,1fr) minmax(100px,1fr);gap:9px;align-items:end;padding:9px;border:1px solid var(--line);border-radius:11px;background:#fbfcfe}
 .profile-field{min-width:0}
 .profile-field label{display:block;margin-bottom:5px;font-size:10px;font-weight:800;color:#41586c}
 .profile-field input{width:100%;min-width:0;border:1px solid #d6e0e7;border-radius:8px;padding:8px;background:#fff;color:var(--ink);font-size:12px}
 .profile-field input[type=color]{height:37px;padding:4px;cursor:pointer}
 .profile-status{margin:9px 0 0!important;font-size:11px!important}
+.profile-color-palette{grid-column:1/-1;margin:0;padding-top:8px;border-top:1px solid var(--line)}
+@media(max-width:700px){.profile-row{grid-template-columns:repeat(2,minmax(0,1fr))}.profile-field input{font-size:16px;min-height:42px}}
 .dialog-head-actions{display:flex;align-items:center;gap:7px;flex-shrink:0}
 .dialog-delete{white-space:nowrap}
 .form-actions{justify-content:flex-end}
 .entry-actions button[data-delete]{color:#a8443d;border-color:#efd5d3}
-@media(max-width:420px){.profile-row{grid-template-columns:minmax(0,1fr) 55px;gap:7px}.profile-field.profile-code{grid-column:1/-1}.entry{flex-direction:column;align-items:stretch}.entry-actions{justify-content:flex-end}}
+@media(max-width:420px){.profile-row{gap:7px}.entry{flex-direction:column;align-items:stretch}.entry-actions{justify-content:flex-end}}
 </style>
 <style>
 :root{--navy:#143451;--ink:#183149;--muted:#667b8e;--paper:#fff;--canvas:#eef3f8;--line:#e3eaf0;--blue:#2874ad;--blue-bg:#e8f3fb;--soft:#f7f9fb;--warn:#fff7e8;--warn-line:#f2dfb9;--shadow:0 18px 48px rgba(23,49,73,.13)}
@@ -151,7 +153,7 @@
     </div>
     <section class="panel profile-panel" aria-labelledby="profilesHeading">
       <h2 id="profilesHeading">Mes 7 profils réutilisables</h2>
-      <p>Renseigne une fois le code, sa couleur et ses horaires. Ces profils restent vides tant que tu ne les complètes pas. Dans le formulaire d’une date, choisis un profil pour reprendre automatiquement son code, sa couleur et ses heures.</p>
+      <p>Renseigne une fois le code, sa couleur et ses horaires. Chaque profil propose toutes les pastilles de l’app ; « Couleur libre » garde aussi le sélecteur de ton appareil. Dans le formulaire d’une date, choisis un profil pour reprendre son code, sa couleur et ses heures. Les profils restent vides tant que tu ne les complètes pas.</p>
       <div class="profile-list" id="profileList" aria-label="Sept profils de codes et d’horaires"></div>
       <p class="profile-status" id="profileStatus" role="status" aria-live="polite">Les profils sont enregistrés uniquement dans ce navigateur.</p>
     </section>
@@ -170,7 +172,7 @@
     <div class="field"><label for="shiftPerson">Nom associé (facultatif)</label><input id="shiftPerson" maxlength="80" placeholder="À renseigner après l’import, si besoin"></div>
     <div class="field-row"><div class="field"><label for="shiftStart">Début (facultatif)</label><input id="shiftStart" type="time"></div><div class="field"><label for="shiftEnd">Fin (facultatif)</label><input id="shiftEnd" type="time"></div></div>
     <div class="field-row"><div class="field"><label for="shiftStatus">Statut</label><select id="shiftStatus"><option>Planifié</option><option>Confirmé par le manager</option><option>Demandé</option><option>À confirmer</option></select></div><div class="field"><label for="shiftBreak">Pause (facultatif)</label><input id="shiftBreak" maxlength="40" placeholder="Ex. 00:00–01:15"></div></div>
-    <div class="field"><label for="shiftColor">Couleur de l’entrée</label><input id="shiftColor" type="color" value="#2874ad" aria-describedby="shiftColorNote"><div class="color-palette" id="colorPalette" role="group" aria-label="Couleurs prédéfinies"><span class="color-choice"><button class="color-swatch" type="button" data-color="#2874AD" style="--swatch:#2874AD" aria-label="Bleu" aria-pressed="false" title="Bleu"></button><span>Bleu</span></span><span class="color-choice"><button class="color-swatch" type="button" data-color="#F2D34F" style="--swatch:#F2D34F" aria-label="Jaune" aria-pressed="false" title="Jaune"></button><span>Jaune</span></span><span class="color-choice"><button class="color-swatch" type="button" data-color="#C27BA0" style="--swatch:#C27BA0" aria-label="Mauve" aria-pressed="false" title="Mauve"></button><span>Mauve</span></span><span class="color-choice"><button class="color-swatch" type="button" data-color="#A8D88D" style="--swatch:#A8D88D" aria-label="Vert clair" aria-pressed="false" title="Vert clair"></button><span>Vert clair</span></span><span class="color-choice"><button class="color-swatch" type="button" data-color="#9AA5B1" style="--swatch:#9AA5B1" aria-label="Gris" aria-pressed="false" title="Gris"></button><span>Gris</span></span><span class="color-choice"><button class="color-swatch" type="button" data-color="#800020" style="--swatch:#800020" aria-label="Bordeaux" aria-pressed="false" title="Bordeaux"></button><span>Bordeaux</span></span><span class="color-choice"><button class="color-swatch" type="button" data-color="#8B5CF6" style="--swatch:#8B5CF6" aria-label="Violet" aria-pressed="false" title="Violet"></button><span>Violet</span></span></div><div class="type-note" id="shiftColorNote">Les noms sont affichés sous les pastilles. Bleu et jaune restent disponibles ; le sélecteur permet aussi une autre couleur. Choisir une couleur ne change pas le type Nuit/Journée.</div></div>
+    <div class="field"><label for="shiftColor">Couleur de l’entrée</label><input id="shiftColor" type="color" value="#2874ad" aria-describedby="shiftColorNote"><div class="color-palette" id="colorPalette" role="group" aria-label="Couleurs prédéfinies"></div><div class="type-note" id="shiftColorNote">La même palette complète est disponible ici et dans chacun des 7 profils. Le sélecteur au-dessus conserve les couleurs de votre appareil et permet une couleur libre. Choisir une couleur ne change pas le type Nuit/Journée.</div></div>
     <div class="field"><label for="shiftNote">Note personnelle (facultatif)</label><textarea id="shiftNote" maxlength="300" placeholder="Équipe, personne en binôme, détail utile…"></textarea></div>
     <div class="form-actions"><div class="right-actions"><button class="secondary" id="cancelDialog" type="button">Annuler</button><button class="primary" id="saveEntry" type="submit">Enregistrer</button></div></div>
   </form>
@@ -181,6 +183,16 @@
   'use strict';
   const STORE_KEY = 'planner-personnel-local-v1';
   const PROFILE_KEY = 'planner-personnel-profiles-v1';
+  // One shared, additive palette: entry form and all seven profiles stay in sync.
+  const COLOR_PALETTE = [
+    {color:'#2874AD',name:'Bleu'},
+    {color:'#F2D34F',name:'Jaune'},
+    {color:'#C27BA0',name:'Mauve'},
+    {color:'#A8D88D',name:'Vert clair'},
+    {color:'#9AA5B1',name:'Gris'},
+    {color:'#800020',name:'Bordeaux'},
+    {color:'#8B5CF6',name:'Violet'}
+  ];
   const weekdays = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
   const monthFmt = new Intl.DateTimeFormat('fr-FR',{month:'long',year:'numeric'});
   const longFmt = new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
@@ -222,7 +234,18 @@
   function emptyProfiles(){return Array.from({length:7},()=>({code:'',color:'',start:'',end:''}))}
   function loadProfiles(){try{const value=JSON.parse(localStorage.getItem(PROFILE_KEY)||'null');return Array.from({length:7},(_,i)=>{const item=Array.isArray(value)?value[i]||{}:{};return{code:typeof item.code==='string'?item.code.slice(0,40):'',color:safeColor(item.color),start:/^\d{2}:\d{2}$/.test(item.start||'')?item.start:'',end:/^\d{2}:\d{2}$/.test(item.end||'')?item.end:''}})}catch(e){return emptyProfiles()}}
   function saveProfiles(){try{localStorage.setItem(PROFILE_KEY,JSON.stringify(profiles));$('profileStatus').textContent='Profils enregistrés uniquement dans ce navigateur.';return true}catch(e){$('profileStatus').textContent='Impossible de sauvegarder les profils sur cet appareil.';return false}}
-  function renderProfiles(){$('profileList').innerHTML=profiles.map((profile,index)=>`<div class="profile-row" data-profile-index="${index}"><div class="profile-field profile-code"><label for="profileCode${index}">Profil ${index+1} · Code</label><input id="profileCode${index}" type="text" maxlength="40" autocomplete="off" data-profile-field="code" value="${safeText(profile.code)}" placeholder="Ex. N2"></div><div class="profile-field"><label for="profileColor${index}">Couleur</label><input id="profileColor${index}" type="color" data-profile-field="color" value="${safeText(profile.color||'#FFFFFF')}" aria-label="Couleur du profil ${index+1}"></div><div class="profile-field"><label for="profileStart${index}">Début</label><input id="profileStart${index}" type="time" data-profile-field="start" value="${safeText(profile.start)}" aria-label="Début du profil ${index+1}"></div><div class="profile-field"><label for="profileEnd${index}">Fin</label><input id="profileEnd${index}" type="time" data-profile-field="end" value="${safeText(profile.end)}" aria-label="Fin du profil ${index+1}"></div></div>`).join('');updateProfileOptions()}
+  function colorPaletteMarkup(selectedColor=''){
+    const selected=safeColor(selectedColor);
+    return COLOR_PALETTE.map(({color,name})=>`<span class="color-choice"><button class="color-swatch" type="button" data-color="${color}" style="--swatch:${color}" aria-label="${name}" aria-pressed="${color===selected}" title="${name}"></button><span>${name}</span></span>`).join('');
+  }
+  function updatePaletteSelection(palette,selectedColor){
+    const selected=safeColor(selectedColor);
+    palette.querySelectorAll('[data-color]').forEach(button=>button.setAttribute('aria-pressed',String(safeColor(button.dataset.color)===selected)));
+  }
+  function renderProfiles(){
+    $('profileList').innerHTML=profiles.map((profile,index)=>`<div class="profile-row" data-profile-index="${index}" role="group" aria-label="Profil ${index+1}"><div class="profile-field profile-code"><label for="profileCode${index}">Profil ${index+1} · Code</label><input id="profileCode${index}" type="text" maxlength="40" autocomplete="off" data-profile-field="code" value="${safeText(profile.code)}" placeholder="Ex. N2"></div><div class="profile-field"><label for="profileColor${index}">Couleur libre</label><input id="profileColor${index}" type="color" data-profile-field="color" value="${safeText(profile.color||'#FFFFFF')}" aria-label="Couleur libre du profil ${index+1}"></div><div class="profile-field"><label for="profileStart${index}">Début</label><input id="profileStart${index}" type="time" data-profile-field="start" value="${safeText(profile.start)}" aria-label="Début du profil ${index+1}"></div><div class="profile-field"><label for="profileEnd${index}">Fin</label><input id="profileEnd${index}" type="time" data-profile-field="end" value="${safeText(profile.end)}" aria-label="Fin du profil ${index+1}"></div><div class="color-palette profile-color-palette" role="group" aria-label="Couleurs prédéfinies du profil ${index+1}">${colorPaletteMarkup(profile.color)}</div></div>`).join('');
+    updateProfileOptions();
+  }
   function updateProfileOptions(){const select=$('shiftPreset');if(!select)return;const selected=select.value,active=profiles.map((profile,index)=>({profile,index})).filter(item=>item.profile.code.trim());select.innerHTML='<option value="">Aucun profil choisi</option>'+active.map(item=>`<option value="${item.index}">Profil ${item.index+1} · ${safeText(item.profile.code.trim())}</option>`).join('');if(active.some(item=>String(item.index)===selected))select.value=selected}
   function applySelectedProfile(){const value=$('shiftPreset').value;if(value==='')return;const profile=profiles[Number(value)];if(!profile?.code.trim())return;$('shiftCode').value=profile.code.trim();if(profile.color)$('shiftColor').value=profile.color;$('shiftStart').value=profile.start;$('shiftEnd').value=profile.end;updateColorPalette()}
   function safeText(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -316,10 +339,27 @@
   function openCopyForm(entry){openForm(entry.date,entry);copyMode=true;$('dialogTitle').textContent='Copier une entrée';$('dialogSubtitle').textContent='Choisissez une autre date ; l’entrée d’origine ne sera pas modifiée.';$('dateFieldLabel').textContent='Date d’origine';$('entryId').value='';$('deleteEntry').hidden=true;$('copyDateField').hidden=false;$('copyDate').required=true;$('saveEntry').textContent='Créer la copie'}
   function closeForm(){dom.dialog.close();copyMode=false}
   $('shiftType').addEventListener('change',()=>{$('typeNote').textContent=typeDescription($('shiftType').value);if($('shiftType').value==='HE'&&!$('entryId').value)$('shiftStatus').value='À confirmer';if($('shiftType').value==='G bleu'&&!$('shiftCode').value)$('shiftCode').value='G bleu';if($('shiftType').value==='HE'&&!$('shiftCode').value)$('shiftCode').value='HE'});
-  function updateColorPalette(){const selected=safeColor($('shiftColor').value);$('colorPalette').querySelectorAll('[data-color]').forEach(button=>button.setAttribute('aria-pressed',String(safeColor(button.dataset.color)===selected)))}
+  function updateColorPalette(){updatePaletteSelection($('colorPalette'),$('shiftColor').value)}
   $('colorPalette').addEventListener('click',event=>{const button=event.target.closest('[data-color]');if(!button)return;$('shiftColor').value=button.dataset.color;updateColorPalette()});
   $('shiftColor').addEventListener('input',updateColorPalette);$('shiftColor').addEventListener('change',updateColorPalette);
-  $('profileList').addEventListener('input',event=>{const input=event.target.closest('[data-profile-field]');if(!input)return;const row=input.closest('[data-profile-index]'),index=Number(row?.dataset.profileIndex),field=input.dataset.profileField;if(!Number.isInteger(index)||index<0||index>=profiles.length)return;profiles[index][field]=field==='color'?safeColor(input.value):input.value;if(saveProfiles())updateProfileOptions()});
+  function updateProfileInput(event){
+    const input=event.target.closest('[data-profile-field]');if(!input)return;
+    const row=input.closest('[data-profile-index]'),index=Number(row?.dataset.profileIndex),field=input.dataset.profileField;
+    if(!Number.isInteger(index)||index<0||index>=profiles.length||!['code','color','start','end'].includes(field))return;
+    profiles[index][field]=field==='color'?safeColor(input.value):input.value;
+    if(field==='color')updatePaletteSelection(row.querySelector('.color-palette'),profiles[index].color);
+    if(saveProfiles())updateProfileOptions();
+  }
+  $('profileList').addEventListener('input',updateProfileInput);
+  $('profileList').addEventListener('change',updateProfileInput);
+  $('profileList').addEventListener('click',event=>{
+    const button=event.target.closest('[data-color]');if(!button)return;
+    const row=button.closest('[data-profile-index]'),index=Number(row?.dataset.profileIndex),color=safeColor(button.dataset.color);
+    if(!Number.isInteger(index)||index<0||index>=profiles.length||!color)return;
+    profiles[index].color=color;row.querySelector('[data-profile-field="color"]').value=color;
+    updatePaletteSelection(row.querySelector('.color-palette'),color);
+    if(saveProfiles())updateProfileOptions();
+  });
   $('shiftPreset').addEventListener('change',applySelectedProfile);
   $('shiftForm').addEventListener('submit',e=>{
     e.preventDefault();const id=$('entryId').value||`${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
@@ -669,6 +709,7 @@
   window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;$('installStatus').textContent='Application installée sur cet appareil.';$('installApp').disabled=true;$('installApp').textContent='Installée'});
   if(window.matchMedia('(display-mode: standalone)').matches)$('installCard').hidden=true;
   if('serviceWorker' in navigator&&location.protocol==='https:'){navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'}).then(registration=>{registration.update().catch(()=>{});return navigator.serviceWorker.ready}).then(()=>{$('offlineStatus').textContent='Calendrier et saisie préparés pour une ouverture hors connexion. Les outils OCR/HEIC peuvent encore nécessiter Internet ; les photos restent locales.'}).catch(()=>{$('offlineStatus').textContent='Le mode hors connexion n’a pas pu se préparer. L’app reste utilisable en ligne ; les photos restent locales.'})}
+  $('colorPalette').innerHTML=colorPaletteMarkup($('shiftColor').value);
   renderProfiles();
   render();
 })();
