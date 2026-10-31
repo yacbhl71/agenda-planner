@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'planner-shell-v3-local-save-ocr-review';
+const SHELL_CACHE = 'planner-shell-v4-text-row-only';
 const SHELL_ASSETS = [
   './',
   './index.html',
