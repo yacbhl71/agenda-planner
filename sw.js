@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'planner-shell-v12-shared-profile-palette';
+const SHELL_CACHE = 'planner-shell-v13-shared-profile-palette';
 const SHELL_ASSETS = [
   './',
   './index.html',
@@ -10,7 +10,7 @@ const SHELL_ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(SHELL_CACHE)
-      .then((cache) => cache.addAll(SHELL_ASSETS))
+      .then((cache) => cache.addAll(SHELL_ASSETS.map((asset) => new Request(asset, { cache: 'reload' }))))
       .then(() => self.skipWaiting())
   );
 });
@@ -37,7 +37,7 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate') {
     event.respondWith((async () => {
       try {
-        return await fetch(request);
+        return await fetch(request, { cache: 'reload' });
       } catch (_error) {
         const shell = await caches.open(SHELL_CACHE);
         const fallback = await shell.match(new URL('./index.html', scopeUrl).href);
