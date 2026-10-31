@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'planner-shell-v8-named-colors-refresh';
+const SHELL_CACHE = 'planner-shell-v9-reusable-profiles';
 const SHELL_ASSETS = [
   './',
   './index.html',
