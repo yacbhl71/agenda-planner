@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'planner-shell-v9-reusable-profiles';
+const SHELL_CACHE = 'planner-shell-v10-entry-delete';
 const SHELL_ASSETS = [
   './',
   './index.html',
