@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'planner-shell-v6-local-month-pdf-jpeg';
+const SHELL_CACHE = 'planner-shell-v7-browser-aware-install';
 const SHELL_ASSETS = [
   './',
   './index.html',
