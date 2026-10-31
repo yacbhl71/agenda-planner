@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'planner-shell-v5-independent-type-color';
+const SHELL_CACHE = 'planner-shell-v6-local-month-pdf-jpeg';
 const SHELL_ASSETS = [
   './',
   './index.html',

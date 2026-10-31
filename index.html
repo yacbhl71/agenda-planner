@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#143451">
 <meta name="application-name" content="Mon planning">
-<meta name="planner-build" content="r11-independent-type-color-palette">
+<meta name="planner-build" content="r12-local-month-pdf-jpeg">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" type="image/png" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
@@ -113,8 +113,8 @@
       </section>
       <section class="panel" aria-labelledby="dataHeading">
         <h2 id="dataHeading">Sauvegarde &amp; confidentialité</h2>
-        <p>Pour garder une copie ou déplacer vos entrées, exportez un fichier JSON. Il contient les informations que vous avez saisies.</p>
-        <div class="actions-grid"><button class="secondary" id="exportBtn" type="button">Exporter mes entrées</button><button class="secondary" id="printBtn" type="button">Imprimer le mois</button><button class="secondary" id="importBtn" type="button">Importer une sauvegarde</button><button class="secondary" id="clearAllBtn" type="button">Effacer mes entrées</button></div>
+        <p>Téléchargez le mois affiché en PDF ou en image JPEG légère. Ces fichiers sont créés dans ce navigateur ; votre planning n’est envoyé nulle part. Le JSON reste disponible pour sauvegarder et réimporter toutes vos entrées.</p>
+        <div class="actions-grid"><button class="primary" id="exportPdfBtn" type="button">Télécharger le mois en PDF</button><button class="secondary" id="exportJpegBtn" type="button">Télécharger l’image JPEG</button><button class="secondary" id="exportBtn" type="button">Exporter la sauvegarde JSON</button><button class="secondary" id="printBtn" type="button">Imprimer le mois</button><button class="secondary" id="importBtn" type="button">Importer une sauvegarde</button><button class="secondary" id="clearAllBtn" type="button">Effacer mes entrées</button></div>
         <input id="backupFile" type="file" accept="application/json,.json" hidden>
         <p class="privacy-small">Le stockage est propre à ce navigateur. Effacer les données du navigateur peut supprimer les entrées sauvegardées.</p>
       </section>
@@ -277,11 +277,63 @@
   $('prevMonth').addEventListener('click',()=>{view=new Date(view.getFullYear(),view.getMonth()-1,1);render()});$('nextMonth').addEventListener('click',()=>{view=new Date(view.getFullYear(),view.getMonth()+1,1);render()});
   $('saveNow').addEventListener('click',()=>{if(saveEntries())showToast('Entrées sauvegardées sur cet appareil.')});
   $('printBtn').addEventListener('click',()=>window.print());
+  $('exportPdfBtn').addEventListener('click',()=>exportDisplayedMonth('pdf'));
+  $('exportJpegBtn').addEventListener('click',()=>exportDisplayedMonth('jpeg'));
   $('exportBtn').addEventListener('click',()=>{const exportedEntries=entries.map(e=>({...e,color:safeColor(e.color)||''}));const blob=new Blob([JSON.stringify({app:'Mon planning',version:1,exportedAt:new Date().toISOString(),entries:exportedEntries},null,2)],{type:'application/json'});downloadBlob(blob,'mon-planning-sauvegarde.json');showToast('Sauvegarde créée sur cet appareil.')});
   $('importBtn').addEventListener('click',()=>$('backupFile').click());
   $('backupFile').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{const data=JSON.parse(await file.text());const imported=Array.isArray(data)?data:data.entries;if(!Array.isArray(imported))throw new Error('format');if(!confirm(`Importer ${imported.length} entrée(s) ? Les entrées ayant le même identifiant seront remplacées.`))return;const valid=imported.filter(x=>x&&typeof x.id==='string'&&validDate(x.date)&&typeof x.type==='string').map(normalizedEntry);const map=new Map(entries.map(x=>[x.id,x]));valid.forEach(x=>map.set(x.id,x));const previous=entries;entries=[...map.values()];if(saveEntries()){render();showToast(`${valid.length} entrée(s) importée(s).`)}else entries=previous}catch(err){alert('Ce fichier ne semble pas être une sauvegarde JSON valide.')}finally{e.target.value=''}});
   $('clearAllBtn').addEventListener('click',()=>{if(!entries.length){showToast('Aucune entrée à effacer.');return}if(!confirm(`Effacer toutes les ${entries.length} entrée(s) enregistrées dans ce navigateur ? Cette action est définitive.`))return;const previous=entries;entries=[];if(saveEntries()){render();showToast('Les entrées locales ont été effacées.')}else entries=previous});
   function downloadBlob(blob,name){const a=document.createElement('a');const url=URL.createObjectURL(blob);a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+  function roundedRect(ctx,x,y,w,h,r){const radius=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+radius,y);ctx.arcTo(x+w,y,x+w,y+h,radius);ctx.arcTo(x+w,y+h,x,y+h,radius);ctx.arcTo(x,y+h,x,y,radius);ctx.arcTo(x,y,x+w,y,radius);ctx.closePath()}
+  function fitCanvasText(ctx,text,maxWidth){let value=String(text??'');if(ctx.measureText(value).width<=maxWidth)return value;while(value.length&&ctx.measureText(`${value}…`).width>maxWidth)value=value.slice(0,-1);return value?`${value}…`:''}
+  function monthExportCanvas(){
+    const canvas=document.createElement('canvas');canvas.width=1240;canvas.height=1754;const ctx=canvas.getContext('2d',{alpha:false});if(!ctx)throw new Error('Canvas indisponible');
+    const width=canvas.width,height=canvas.height,margin=54,gridWidth=width-margin*2,gap=8,columnWidth=(gridWidth-gap*6)/7;
+    const year=view.getFullYear(),month=view.getMonth(),first=new Date(year,month,1),daysInMonth=new Date(year,month+1,0).getDate(),offset=(first.getDay()+6)%7,rows=Math.ceil((offset+daysInMonth)/7),todayKey=keyFromDate(new Date());
+    const monthEntries=entries.filter(e=>isCurrentMonth(e.date)),byDate=new Map();monthEntries.forEach(e=>{if(!byDate.has(e.date))byDate.set(e.date,[]);byDate.get(e.date).push(e)});
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,width,height);const hero=ctx.createLinearGradient(0,0,width,height*.3);hero.addColorStop(0,'#153b5c');hero.addColorStop(1,'#102b45');ctx.fillStyle=hero;ctx.fillRect(0,0,width,260);
+    ctx.fillStyle='rgba(255,255,255,.055)';ctx.beginPath();ctx.arc(width-55,-35,150,0,Math.PI*2);ctx.fill();
+    ctx.textAlign='left';ctx.textBaseline='alphabetic';ctx.fillStyle='#b9d5e8';ctx.font='800 17px Arial,sans-serif';ctx.fillText('PLANNER PERSONNEL · LOCAL',margin,43);
+    ctx.fillStyle='#fff';ctx.font='800 48px Arial,sans-serif';ctx.fillText('Mon planning',margin,101);
+    const monthLabel=monthFmt.format(view),capitalMonth=monthLabel.charAt(0).toLocaleUpperCase('fr-FR')+monthLabel.slice(1);ctx.font='800 34px Arial,sans-serif';ctx.fillText(capitalMonth,margin,151);
+    ctx.fillStyle='#d4e4ef';ctx.font='20px Arial,sans-serif';ctx.fillText('Un mois clair, vos horaires à portée de main.',margin,186);
+    const summary=[`${monthEntries.length} entrée${monthEntries.length===1?'':'s'}`,`${monthEntries.filter(e=>e.type==='Nuit').length} nuit${monthEntries.filter(e=>e.type==='Nuit').length===1?'':'s'}`,`${monthEntries.filter(e=>e.type==='Journée').length} journée${monthEntries.filter(e=>e.type==='Journée').length===1?'':'s'}`,`${monthEntries.filter(e=>statusClass(e)).length} à confirmer`];let pillX=margin;ctx.font='700 15px Arial,sans-serif';summary.forEach(text=>{const pillWidth=ctx.measureText(text).width+28;roundedRect(ctx,pillX,207,pillWidth,34,17);ctx.fillStyle='rgba(255,255,255,.12)';ctx.fill();ctx.strokeStyle='rgba(255,255,255,.2)';ctx.lineWidth=1;ctx.stroke();ctx.fillStyle='#fff';ctx.textBaseline='middle';ctx.fillText(text,pillX+14,224);pillX+=pillWidth+10});
+    const weekdayY=282,weekdayH=42,gridY=332,footerY=1585,cellHeight=(footerY-gridY-gap*(rows-1))/rows,weekdays=['LUN','MAR','MER','JEU','VEN','SAM','DIM'];ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='800 16px Arial,sans-serif';
+    weekdays.forEach((label,i)=>{const x=margin+i*(columnWidth+gap);roundedRect(ctx,x,weekdayY,columnWidth,weekdayH,10);ctx.fillStyle='#f2f6f9';ctx.fill();ctx.fillStyle='#718396';ctx.fillText(label,x+columnWidth/2,weekdayY+weekdayH/2)});
+    for(let day=1;day<=daysInMonth;day++){
+      const index=offset+day-1,row=Math.floor(index/7),col=index%7,x=margin+col*(columnWidth+gap),y=gridY+row*(cellHeight+gap),key=keyFromDate(new Date(year,month,day)),items=byDate.get(key)||[];
+      roundedRect(ctx,x,y,columnWidth,cellHeight,12);ctx.fillStyle='#fff';ctx.fill();ctx.lineWidth=key===todayKey?2.5:1;ctx.strokeStyle=key===todayKey?'#a8c7dc':'#e3eaf0';ctx.stroke();
+      ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillStyle='#63768a';ctx.font='800 20px Arial,sans-serif';ctx.fillText(String(day),x+10,y+25);
+      items.slice(0,2).forEach((entry,idx)=>{
+        const color=safeColor(entry.color),typeClassName=typeClass(entry),background=color|| (typeClassName==='gblue'?'#e8f3fb':typeClassName==='he'?'#eef2f5':'#eff2f5'),ink=color?colorInk(color):(typeClassName==='gblue'?'#2874ad':'#506274');
+        let label=labelFor(entry);if(typeof entry.code==='string'&&entry.code.trim()&&entry.code.trim()!==entry.type)label+=` · ${entry.type}`;if(entry.person)label+=` · ${entry.person}`;if(entry.start)label+=` · ${entry.start}`;
+        const chipX=x+8,chipY=y+43+idx*37,chipW=columnWidth-16,chipH=31;if(chipY+chipH<y+cellHeight-6){roundedRect(ctx,chipX,chipY,chipW,chipH,7);ctx.fillStyle=background;ctx.fill();ctx.fillStyle=ink;ctx.font='700 15px Arial,sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(fitCanvasText(ctx,label,chipW-14),chipX+7,chipY+chipH/2)}});
+      if(items.length>2){ctx.fillStyle='#718396';ctx.font='800 14px Arial,sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(`+${items.length-2}`,x+9,y+120)}
+    }
+    ctx.strokeStyle='#e3eaf0';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(margin,1605);ctx.lineTo(width-margin,1605);ctx.stroke();
+    const legend=[['#aebbc5','Nuit / journée · code neutre'],['#2874ad','G bleu · garde'],['#aebbc5','HE · confirmation manager']];let lx=margin;ctx.font='15px Arial,sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';legend.forEach(([color,label])=>{ctx.fillStyle=color;ctx.beginPath();ctx.arc(lx+7,1638,6,0,Math.PI*2);ctx.fill();ctx.fillStyle='#53687a';ctx.fillText(label,lx+21,1638);lx+=ctx.measureText(label).width+48});
+    ctx.fillStyle='#708397';ctx.font='14px Arial,sans-serif';ctx.fillText('Export créé localement sur cet appareil · le planning n’est pas envoyé.',margin,1700);
+    return canvas;
+  }
+  function canvasJpegBlob(canvas){return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Création JPEG impossible')),'image/jpeg',.84))}
+  function makePdfBlob(jpegBytes,imageWidth,imageHeight){
+    const parts=[];let length=0;const encoder=new TextEncoder(),offsets=[0];const addBytes=bytes=>{parts.push(bytes);length+=bytes.length},addText=text=>addBytes(encoder.encode(text));
+    addText('%PDF-1.4\n% planner local export\n');
+    const object=(number,body)=>{offsets[number]=length;addText(`${number} 0 obj\n${body}\nendobj\n`)};
+    object(1,'<< /Type /Catalog /Pages 2 0 R >>');object(2,'<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+    object(3,'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>');
+    offsets[4]=length;addText(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${imageWidth} /Height ${imageHeight} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>\nstream\n`);addBytes(jpegBytes);addText('\nendstream\nendobj\n');
+    const content=encoder.encode('q\n595.28 0 0 841.89 0 0 cm\n/Im0 Do\nQ\n');offsets[5]=length;addText(`5 0 obj\n<< /Length ${content.length} >>\nstream\n`);addBytes(content);addText('endstream\nendobj\n');
+    const xrefOffset=length;addText('xref\n0 6\n0000000000 65535 f \n');for(let i=1;i<=5;i++)addText(`${String(offsets[i]).padStart(10,'0')} 00000 n \n`);addText(`trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`);return new Blob(parts,{type:'application/pdf'});
+  }
+  async function exportDisplayedMonth(format){
+    try{
+      const canvas=monthExportCanvas(),jpeg=await canvasJpegBlob(canvas),suffix=monthKey();
+      if(format==='jpeg'){downloadBlob(jpeg,`mon-planning-${suffix}.jpg`);showToast(`Image JPEG téléchargée (${Math.max(1,Math.round(jpeg.size/1024))} Ko).`);return}
+      const pdf=makePdfBlob(new Uint8Array(await jpeg.arrayBuffer()),canvas.width,canvas.height);
+      downloadBlob(pdf,`mon-planning-${suffix}.pdf`);showToast(`PDF téléchargé (${Math.max(1,Math.round(pdf.size/1024))} Ko).`);
+    }catch(error){console.error('Échec de l’export local du mois',error);showToast('Impossible de créer le fichier sur cet appareil.')}
+  }
   function isHeicFile(file){return /\.(?:heic|heif)(?:-sequence)?$/i.test(file?.name||'')||/^image\/hei[cf]/i.test(file?.type||'')}
   function loadHeicConverter(){
     if(window.heic2any)return Promise.resolve(window.heic2any);
