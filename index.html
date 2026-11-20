@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#143451">
 <meta name="application-name" content="Mon planning">
-<meta name="planner-build" content="r20-simple-calendar-profile-colors">
+<meta name="planner-build" content="r21-n1-n2-profile-color-migration">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" type="image/png" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
@@ -205,6 +205,10 @@
   const STORE_KEY = 'planner-personnel-local-v1';
   const PROFILE_KEY = 'planner-personnel-profiles-v1';
   const MAX_PROFILES = 100;
+  const SEEDED_PROFILE_COLORS = {
+    N1:{color:'#E9DDF4',badgeColor:'#5B2C83'},
+    N2:{color:'#DDF0E1',badgeColor:'#2E6B3E'}
+  };
   // One shared, additive palette: entry form and every profile stay in sync.
   const COLOR_PALETTE = [
     {color:'#2874AD',name:'Bleu'},
@@ -221,6 +225,7 @@
   let view = new Date(new Date().getFullYear(),new Date().getMonth(),1);
   let entries = loadEntries();
   let profiles = loadProfiles();
+  if(initializeSeededProfileColors(profiles,entries))saveProfiles('Couleurs des profils N1/N2 complétées dans ce navigateur.');
   let manualEntryColor = false;
   let manualBadgeColor = false;
   let copyMode = false;
@@ -259,7 +264,23 @@
   function emptyProfiles(){return Array.from({length:7},()=>({code:'',color:'',badgeColor:'',start:'',end:''}))}
   function normalizedProfile(item){item=item&&typeof item==='object'?item:{};return{code:typeof item.code==='string'?item.code.slice(0,40):'',color:safeColor(item.color),badgeColor:safeColor(item.badgeColor),start:/^\d{2}:\d{2}$/.test(item.start||'')?item.start:'',end:/^\d{2}:\d{2}$/.test(item.end||'')?item.end:''}}
   function loadProfiles(){try{const value=JSON.parse(localStorage.getItem(PROFILE_KEY)||'null');return Array.isArray(value)?value.slice(0,MAX_PROFILES).map(normalizedProfile):emptyProfiles()}catch(e){return emptyProfiles()}}
-  function saveProfiles(){try{localStorage.setItem(PROFILE_KEY,JSON.stringify(profiles));$('profileStatus').textContent='Profils enregistrés uniquement dans ce navigateur.';return true}catch(e){$('profileStatus').textContent='Impossible de sauvegarder les profils sur cet appareil.';return false}}
+  function initializeSeededProfileColors(profileList,scheduleEntries){
+    const entryCodes=new Set(scheduleEntries.map(entry=>String(entry.code||'').trim().toLocaleUpperCase('fr-FR')));let changed=false;
+    for(const [code,colors] of Object.entries(SEEDED_PROFILE_COLORS)){
+      const matches=profileList.filter(profile=>String(profile.code||'').trim().toLocaleUpperCase('fr-FR')===code);
+      let profile=matches.find(item=>safeColor(item.color)||safeColor(item.badgeColor))||matches[0]||null;
+      if(!profile){
+        if(!entryCodes.has(code))continue;
+        profile=profileList.find(item=>!String(item.code||'').trim()&&!safeColor(item.color)&&!safeColor(item.badgeColor)&&!item.start&&!item.end);
+        if(!profile){if(profileList.length>=MAX_PROFILES)continue;profile=normalizedProfile({});profileList.push(profile)}
+        profile.code=code;changed=true;
+      }
+      if(!safeColor(profile.color)){profile.color=colors.color;changed=true}
+      if(!safeColor(profile.badgeColor)){profile.badgeColor=colors.badgeColor;changed=true}
+    }
+    return changed;
+  }
+  function saveProfiles(status='Profils enregistrés uniquement dans ce navigateur.'){try{localStorage.setItem(PROFILE_KEY,JSON.stringify(profiles));$('profileStatus').textContent=status;return true}catch(e){$('profileStatus').textContent='Impossible de sauvegarder les profils sur cet appareil.';return false}}
   function addProfile(){if(profiles.length>=MAX_PROFILES){showToast(`Limite de ${MAX_PROFILES} profils atteinte.`);return}profiles.push({code:'',color:'',badgeColor:'',start:'',end:''});if(!saveProfiles()){profiles.pop();return}renderProfiles();const input=$(`profileCode${profiles.length-1}`);input?.focus();input?.scrollIntoView?.({behavior:'smooth',block:'center'})}
   function colorPaletteMarkup(selectedColor=''){
     const selected=safeColor(selectedColor);

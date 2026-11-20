@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'planner-shell-v20-simple-calendar-profile-colors';
+const SHELL_CACHE = 'planner-shell-v21-n1-n2-profile-color-migration';
 const SHELL_ASSETS = [
   './',
   './index.html',
