@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'planner-shell-v19-individual-ocr-rows';
+const SHELL_CACHE = 'planner-shell-v20-simple-calendar-profile-colors';
 const SHELL_ASSETS = [
   './',
   './index.html',

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#143451">
 <meta name="application-name" content="Mon planning">
-<meta name="planner-build" content="r19-individual-ocr-rows">
+<meta name="planner-build" content="r20-simple-calendar-profile-colors">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" type="image/png" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
@@ -107,7 +107,7 @@
 <main>
   <header class="hero">
     <div class="hero-top">
-      <div><div class="eyebrow">Planner personnel · local</div><h1>Mon planning</h1><div class="subhead">Un mois clair, vos horaires à portée de main.</div></div>
+      <div><div class="eyebrow">Planner personnel · local</div><h1>Mon planning</h1><div class="subhead">Un mois clair, vos dates et codes de travail.</div></div>
       <div class="hero-tools"><button class="save-button" id="saveNow" type="button" title="Enregistre vos entrées dans ce navigateur. La sauvegarde automatique reste active.">Enregistrer maintenant</button><span class="save-status" id="saveStatus" aria-live="polite">Sauvegarde automatique active</span></div>
     </div>
     <div class="summary" aria-live="polite"><span><b id="countAll">0</b> entrées</span><span><b id="countNight">0</b> nuits</span><span><b id="countDay">0</b> journées</span><span><b id="countPending">0</b> à confirmer</span></div>
@@ -121,8 +121,9 @@
       <div class="calendar-wrap">
         <div class="weekdays" aria-hidden="true"><div class="weekday">Lun</div><div class="weekday">Mar</div><div class="weekday">Mer</div><div class="weekday">Jeu</div><div class="weekday">Ven</div><div class="weekday">Sam</div><div class="weekday">Dim</div></div>
         <div class="days" id="days" role="grid" aria-label="Calendrier du mois"></div>
-        <div class="legend"><span class="legend-item"><i class="dot"></i>Nuit / journée · code neutre</span><span class="legend-item"><i class="dot blue"></i>G bleu · garde</span><span class="legend-item"><i class="dot"></i>HE · confirmation manager</span></div>
-        <div class="add-hint">Touchez le bandeau code/type pour modifier une entrée existante ; touchez le reste de la case pour en ajouter une autre.</div>
+        <div class="legend">Les couleurs suivent vos profils ou votre choix manuel.</div>
+        <div class="add-hint" id="missingProfileColors" role="status" hidden></div>
+        <div class="add-hint">Touchez le code pour modifier une entrée existante ; touchez le reste de la case pour en ajouter une autre.</div>
       </div>
     </section>
     <div class="privacy-note"><span aria-hidden="true">●</span><div><strong>Vos données restent dans ce navigateur.</strong> Les entrées sont sauvegardées localement sur cet appareil, sans compte ni synchronisation. Aucun planning n’est intégré à la page publiée.</div></div>
@@ -172,7 +173,7 @@
     </div>
     <section class="panel profile-panel" aria-labelledby="profilesHeading">
       <h2 id="profilesHeading">Mes profils réutilisables</h2>
-      <p>Renseigne une fois le code, les couleurs du fond de case et du bandeau code/type, puis les horaires. Chaque profil propose toute la palette ; le sélecteur libre accepte aussi les couleurs de ton appareil. Les entrées reprennent les deux couleurs du profil correspondant à leur code, sauf si tu choisis une couleur manuelle dans l’entrée.</p>
+      <p>Renseigne une fois le code et les couleurs du fond de case et du bandeau ; les horaires sont facultatifs. Chaque profil propose toute la palette et un sélecteur libre. Les entrées déjà créées ou importées reprennent les couleurs du profil correspondant à leur code, sauf couleur choisie manuellement. Les profils restent dans ce navigateur et ne sont pas synchronisés entre appareils.</p>
       <div class="profile-list" id="profileList" aria-label="Profils de codes et d’horaires"></div>
       <button class="secondary profile-add" id="addProfile" type="button">＋ Ajouter un profil</button>
       <p class="profile-status" id="profileStatus" role="status" aria-live="polite">Les profils sont enregistrés uniquement dans ce navigateur.</p>
@@ -223,6 +224,7 @@
   let manualEntryColor = false;
   let manualBadgeColor = false;
   let copyMode = false;
+  let originalFormEntry = null;
   let currentFileUrl = null;
   let heicConverterPromise = null;
   let heicCacheFile = null;
@@ -321,7 +323,7 @@
     for(let i=0;i<offset;i++)html+='<div class="day empty" aria-hidden="true"></div>';
     for(let d=1;d<=daysInMonth;d++){
       const date=new Date(year,month,d),key=keyFromDate(date),items=byDate.get(key)||[];
-      const chips=items.slice(0,2).map(e=>{const color=entryColor(e),customBadgeColor=entryBadgeColor(e),code=String(e.code||'').trim(),details=[e.person,e.start].filter(Boolean).join(' · '),styleParts=[];if(color)styleParts.push(`--entry-color:${color};--entry-ink:${colorInk(color)}`);if(customBadgeColor)styleParts.push(`--badge-color:${customBadgeColor};--badge-ink:${colorInk(customBadgeColor)}`);const style=styleParts.length?` style="${styleParts.join(';')}"`:'';return `<span class="chip ${typeClass(e)}${color?' color-chip':''}" data-entry-id="${safeText(e.id)}"${style}><span class="chip-code-type${customBadgeColor?' custom-badge':''}"><span class="chip-code">${safeText(code||e.type)}</span>${code&&code!==e.type?`<span class="chip-type">${safeText(e.type)}</span>`:''}</span>${details?`<span class="chip-detail">${safeText(details)}</span>`:''}</span>`}).join('');
+      const chips=items.slice(0,2).map(e=>{const color=entryColor(e),customBadgeColor=entryBadgeColor(e),code=String(e.code||'').trim(),styleParts=[];if(color)styleParts.push(`--entry-color:${color};--entry-ink:${colorInk(color)}`);if(customBadgeColor)styleParts.push(`--badge-color:${customBadgeColor};--badge-ink:${colorInk(customBadgeColor)}`);const style=styleParts.length?` style="${styleParts.join(';')}"`:'';return `<span class="chip ${typeClass(e)}${color?' color-chip':''}" data-entry-id="${safeText(e.id)}"${style}><span class="chip-code-type${customBadgeColor?' custom-badge':''}"><span class="chip-code">${safeText(code||e.type)}</span></span></span>`}).join('');
       const more=items.length>2?`<span class="more">+${items.length-2}</span>`:'';
       const dayColor=items.length===1?entryColor(items[0]):'',dayInk=dayColor?colorInk(dayColor):'',dayStyle=dayColor?` style="--day-color:${dayColor};--day-ink:${dayInk}"`:'';
       html+=`<button class="day ${key===todayKey?'today':''}${dayColor?' color-day':''}"${dayStyle} type="button" data-date="${key}" aria-label="${safeText(longFmt.format(date))}${items.length?`, ${items.length} entrée${items.length>1?'s':''}`:''}"><span class="day-num">${d}</span><span class="chips">${chips}${more}</span></button>`;
@@ -329,6 +331,8 @@
     const remainder=(7-(offset+daysInMonth)%7)%7;
     for(let i=0;i<remainder;i++)html+='<div class="day empty" aria-hidden="true"></div>';
     dom.days.innerHTML=html;
+    const missingColors=[...new Set(entries.filter(e=>isCurrentMonth(e.date)&&String(e.code||'').trim()&&!entryColor(e)&&!entryBadgeColor(e)&&!defaultBadgeColor(e)).map(e=>String(e.code).trim()))];
+    const colorHelp=$('missingProfileColors');colorHelp.hidden=!missingColors.length;colorHelp.textContent=missingColors.length?`Aucune couleur définie dans ce navigateur pour : ${missingColors.join(', ')}. Vérifiez ou créez les profils ci-dessous : leurs couleurs s’appliquent aussi aux entrées déjà importées.`:'';
     dom.days.querySelectorAll('[data-date]').forEach(btn=>btn.addEventListener('click',event=>{const chip=event.target.closest('[data-entry-id]');if(chip){const item=entries.find(e=>e.id===chip.dataset.entryId);if(item){openForm(item.date,item);return}}openForm(btn.dataset.date)}));
     renderEntries();renderCounts();
   }
@@ -346,7 +350,7 @@
     $('entryCountLabel').textContent=`${list.length} entrée${list.length>1?'s':''}`;
     if(!list.length){dom.entryList.className='empty-list';dom.entryList.textContent='Aucune entrée pour ce mois. Choisissez un jour du calendrier pour commencer.';return}
     dom.entryList.className='entries';
-    dom.entryList.innerHTML=list.map(e=>{const color=entryColor(e);const style=color?` style="--entry-color:${color}"`:'';return `<article class="entry${color?' has-color':''}"${style}><div class="entry-main"><div class="entry-title">${color?'<span class="entry-color" aria-hidden="true"></span>':''}${safeText(fmtDate(e.date))} · ${safeText(labelFor(e))}<div class="entry-subline"><span class="entry-type-tag">${safeText(e.type)}</span>${e.status?`<span class="status">${safeText(e.status)}</span>`:''}</div></div><div class="entry-meta">${safeText(shiftTimeText(e))}${e.break?` · Pause ${safeText(e.break)}`:''}${e.person?`<br>Nom : ${safeText(e.person)}`:''}${e.note?`<br>${safeText(e.note)}`:''}</div></div><div class="entry-actions"><button type="button" data-copy="${safeText(e.id)}" aria-label="Copier ${safeText(labelFor(e))}">Copier</button><button type="button" data-edit="${safeText(e.id)}" aria-label="Modifier ${safeText(labelFor(e))}">Modifier</button><button type="button" data-delete="${safeText(e.id)}" aria-label="Supprimer ${safeText(labelFor(e))}">Supprimer</button></div></article>`}).join('');
+    dom.entryList.innerHTML=list.map(e=>{const color=entryColor(e);const style=color?` style="--entry-color:${color}"`:'';return `<article class="entry${color?' has-color':''}"${style}><div class="entry-main"><div class="entry-title">${color?'<span class="entry-color" aria-hidden="true"></span>':''}${safeText(fmtDate(e.date))} · ${safeText(labelFor(e))}</div></div><div class="entry-actions"><button type="button" data-copy="${safeText(e.id)}" aria-label="Copier ${safeText(labelFor(e))}">Copier</button><button type="button" data-edit="${safeText(e.id)}" aria-label="Modifier ${safeText(labelFor(e))}">Modifier</button><button type="button" data-delete="${safeText(e.id)}" aria-label="Supprimer ${safeText(labelFor(e))}">Supprimer</button></div></article>`}).join('');
     dom.entryList.querySelectorAll('[data-copy]').forEach(btn=>btn.addEventListener('click',()=>{const item=entries.find(e=>e.id===btn.dataset.copy);if(item)openCopyForm(item)}));
     dom.entryList.querySelectorAll('[data-delete]').forEach(btn=>btn.addEventListener('click',()=>{const item=entries.find(e=>e.id===btn.dataset.delete);if(!item||!confirm(`Supprimer l’entrée « ${labelFor(item)} » du ${fmtDate(item.date)} ?`))return;const previous=entries;entries=entries.filter(e=>e.id!==item.id);if(saveEntries()){render();showToast('Entrée supprimée.')}else entries=previous}));
     dom.entryList.querySelectorAll('[data-edit]').forEach(btn=>btn.addEventListener('click',()=>{const item=entries.find(e=>e.id===btn.dataset.edit);if(item)openForm(item.date,item)}));
@@ -358,7 +362,7 @@
     return 'Saisissez uniquement les heures confirmées. Le code du tableau est facultatif.';
   }
   function openForm(dateKey,entry=null){
-    copyMode=false;manualEntryColor=entry?.colorSource==='manual';manualBadgeColor=entry?.badgeColorSource==='manual';$('copyDateField').hidden=true;$('copyDate').required=false;$('copyDate').value='';$('dateFieldLabel').textContent='Date';$('dialogSubtitle').textContent=entry?'Modifiez ou supprimez cette entrée. Le bouton rouge « Supprimer » est en haut à droite.':'Saisie privée, enregistrée dans ce navigateur. Pour supprimer une entrée existante, ouvrez « Modifier » dans la liste.';$('saveEntry').textContent='Enregistrer';
+    copyMode=false;originalFormEntry=entry;manualEntryColor=entry?.colorSource==='manual';manualBadgeColor=entry?.badgeColorSource==='manual';$('copyDateField').hidden=true;$('copyDate').required=false;$('copyDate').value='';$('dateFieldLabel').textContent='Date';$('dialogSubtitle').textContent=entry?'Modifiez ou supprimez cette entrée. Le bouton rouge « Supprimer » est en haut à droite.':'Saisie privée, enregistrée dans ce navigateur. Pour supprimer une entrée existante, ouvrez « Modifier » dans la liste.';$('saveEntry').textContent='Enregistrer';
     $('shiftPreset').value='';
     $('entryId').value=entry?.id||'';$('shiftDate').value=dateKey;$('selectedDateLabel').textContent=longFmt.format(dateFromKey(dateKey));
     $('dialogTitle').textContent=entry?'Modifier l’entrée':'Ajouter une entrée';
@@ -367,7 +371,7 @@
     dom.dialog.showModal();
   }
   function openCopyForm(entry){openForm(entry.date,entry);copyMode=true;$('dialogTitle').textContent='Copier une entrée';$('dialogSubtitle').textContent='Choisissez une autre date ; l’entrée d’origine ne sera pas modifiée.';$('dateFieldLabel').textContent='Date d’origine';$('entryId').value='';$('deleteEntry').hidden=true;$('copyDateField').hidden=false;$('copyDate').required=true;$('saveEntry').textContent='Créer la copie'}
-  function closeForm(){dom.dialog.close();copyMode=false}
+  function closeForm(){dom.dialog.close();copyMode=false;originalFormEntry=null}
   $('shiftType').addEventListener('change',()=>{$('typeNote').textContent=typeDescription($('shiftType').value);if($('shiftType').value==='HE'&&!$('entryId').value)$('shiftStatus').value='À confirmer';if($('shiftType').value==='G bleu'&&!$('shiftCode').value)$('shiftCode').value='G bleu';if($('shiftType').value==='HE'&&!$('shiftCode').value)$('shiftCode').value='HE';if(!manualBadgeColor)syncCodeProfileColors()});
   function updateColorPalettes(){updatePaletteSelection($('colorPalette'),$('shiftColor').value);updatePaletteSelection($('badgeColorPalette'),$('shiftBadgeColor').value)}
   function syncCodeProfileColors(){const profile=profileForCode($('shiftCode').value);if(!manualEntryColor)$('shiftColor').value=profile?.color||'#2874ad';const manualCellColor=manualEntryColor?safeColor($('shiftColor').value):'';if(!manualBadgeColor)$('shiftBadgeColor').value=manualCellColor||profile?.badgeColor||defaultBadgeColor({type:$('shiftType').value})||'#FFFFFF';updateColorPalettes()}
@@ -401,8 +405,11 @@
   $('shiftPreset').addEventListener('change',applySelectedProfile);
   $('shiftForm').addEventListener('submit',e=>{
     e.preventDefault();const id=$('entryId').value||`${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
-    if(copyMode){const targetDate=$('copyDate').value;if(!validDate(targetDate)){ $('copyDate').reportValidity();return}if(targetDate===$('shiftDate').value){showToast('Choisissez une date différente de la date d’origine.');return}const copied={id,date:targetDate,type:$('shiftType').value,code:$('shiftCode').value.trim(),start:$('shiftStart').value,end:$('shiftEnd').value,status:$('shiftStatus').value,break:$('shiftBreak').value.trim(),note:$('shiftNote').value.trim(),person:$('shiftPerson').value.trim(),color:safeColor($('shiftColor').value)||'#2874ad',colorSource:manualEntryColor?'manual':'auto',badgeColor:manualBadgeColor?safeColor($('shiftBadgeColor').value):'',badgeColorSource:manualBadgeColor?'manual':'auto'};const previous=entries;entries=[...entries,copied];if(saveEntries()){const date=dateFromKey(targetDate);view=new Date(date.getFullYear(),date.getMonth(),1);render();closeForm();showToast('Copie ajoutée au calendrier.')}else entries=previous;return}
-    const obj={id,date:$('shiftDate').value,type:$('shiftType').value,code:$('shiftCode').value.trim(),start:$('shiftStart').value,end:$('shiftEnd').value,status:$('shiftStatus').value,break:$('shiftBreak').value.trim(),note:$('shiftNote').value.trim(),person:$('shiftPerson').value.trim(),color:safeColor($('shiftColor').value)||'#2874ad',colorSource:manualEntryColor?'manual':'auto',badgeColor:manualBadgeColor?safeColor($('shiftBadgeColor').value):'',badgeColorSource:manualBadgeColor?'manual':'auto'};
+    // An unchanged color picker is not a manual choice and must not turn a neutral import blue.
+    const autoCellColor=safeColor(profileForCode($('shiftCode').value)?.color)||(originalFormEntry?.colorSource==='manual'?'':safeColor(originalFormEntry?.color));
+    const selectedCellColor=manualEntryColor?safeColor($('shiftColor').value):autoCellColor;
+    if(copyMode){const targetDate=$('copyDate').value;if(!validDate(targetDate)){ $('copyDate').reportValidity();return}if(targetDate===$('shiftDate').value){showToast('Choisissez une date différente de la date d’origine.');return}const copied={id,date:targetDate,type:$('shiftType').value,code:$('shiftCode').value.trim(),start:$('shiftStart').value,end:$('shiftEnd').value,status:$('shiftStatus').value,break:$('shiftBreak').value.trim(),note:$('shiftNote').value.trim(),person:$('shiftPerson').value.trim(),color:selectedCellColor,colorSource:manualEntryColor?'manual':'auto',badgeColor:manualBadgeColor?safeColor($('shiftBadgeColor').value):'',badgeColorSource:manualBadgeColor?'manual':'auto'};const previous=entries;entries=[...entries,copied];if(saveEntries()){const date=dateFromKey(targetDate);view=new Date(date.getFullYear(),date.getMonth(),1);render();closeForm();showToast('Copie ajoutée au calendrier.')}else entries=previous;return}
+    const obj={id,date:$('shiftDate').value,type:$('shiftType').value,code:$('shiftCode').value.trim(),start:$('shiftStart').value,end:$('shiftEnd').value,status:$('shiftStatus').value,break:$('shiftBreak').value.trim(),note:$('shiftNote').value.trim(),person:$('shiftPerson').value.trim(),color:selectedCellColor,colorSource:manualEntryColor?'manual':'auto',badgeColor:manualBadgeColor?safeColor($('shiftBadgeColor').value):'',badgeColorSource:manualBadgeColor?'manual':'auto'};
     const previous=entries;entries=[...entries];const idx=entries.findIndex(x=>x.id===id);if(idx>=0)entries[idx]=obj;else entries.push(obj);
     if(saveEntries()){render();closeForm();showToast(idx>=0?'Entrée mise à jour.':'Entrée enregistrée dans ce navigateur.')}else entries=previous;
   });
