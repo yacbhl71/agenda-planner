@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#143451">
 <meta name="application-name" content="Mon planning">
-<meta name="planner-build" content="r18-individual-schedule-import">
+<meta name="planner-build" content="r19-individual-ocr-rows">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" type="image/png" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
@@ -566,6 +566,10 @@
     }
     return canvas;
   }
+  function prepareIndividualOcrCanvas(source){
+    const canvas=document.createElement('canvas');canvas.width=Math.round(source.width*.65);canvas.height=source.height;
+    canvas.getContext('2d').drawImage(source,0,0);return canvas;
+  }
   function normToken(text){return String(text||'').toUpperCase().replace(/[₀₁₂₃₄₅₆₇₈₉]/g,c=>String('₀₁₂₃₄₅₆₇₈₉'.indexOf(c))).replace(/[^A-Z0-9]/g,'')}
   function normName(text){return String(text||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim()}
   function median(values){if(!values.length)return 0;const s=[...values].sort((a,b)=>a-b);return s[Math.floor(s.length/2)]}
@@ -622,9 +626,84 @@
   function suggestShiftType(code){const value=String(code||'').trim().toUpperCase();if(value==='HE')return'HE';if(value==='G')return'G bleu';if(/^N(?:[12])?$/.test(value))return'Nuit';return'Autre'}
   function setPersonSelectionVisible(visible){$('personLabel').parentElement.hidden=!visible;$('findPerson').hidden=!visible;$('personMatchStatus').hidden=!visible;$('personResults').hidden=!visible;$('employeeSelect').parentElement.hidden=!visible;$('selectedPersonPanel').hidden=true;if(!visible)$('manualRowPanel').hidden=true;$('chooseRowWithoutName').hidden=!visible}
   function parseIndividualScheduleRows(words,width,height){
-    const validWords=(words||[]).filter(w=>w&&w.text&&Number.isFinite(w.cx)&&Number.isFinite(w.cy));if(!validWords.length)return[];const typical=median(validWords.map(w=>w.height).filter(h=>h>0))||16;const groups=groupByY(validWords,Math.max(7,Math.min(22,typical*.72,height*.003)));const weekdays={LUN:'lundi',LUNDI:'lundi',MAR:'mardi',MARDI:'mardi',MER:'mercredi',MERCREDI:'mercredi',JEU:'jeudi',JEUDI:'jeudi',VEN:'vendredi',VENDREDI:'vendredi',SAM:'samedi',SAMEDI:'samedi',DIM:'dimanche',DIMANCHE:'dimanche'};const weekdayOf=text=>{const token=normToken(text);return weekdays[token]||Object.keys(weekdays).sort((a,b)=>b.length-a.length).find(key=>token.startsWith(key))&&weekdays[Object.keys(weekdays).sort((a,b)=>b.length-a.length).find(key=>token.startsWith(key))]||''};const rows=[];
-    for(const group of groups){const row=[...group.words].sort((a,b)=>a.cx-b.cx);const left=row.filter(w=>w.cx<width*.20);let dayWord=null,day=null,weekday='';for(const w of left){const token=normToken(w.text).replace(/^[OQ](?=\d)/,'0').replace(/^[IL|](?=\d)/,'1');const match=String(w.text).match(/(?:lun(?:di)?|mar(?:di)?|mer(?:credi)?|jeu(?:di)?|ven(?:dredi)?|sam(?:edi)?|dim(?:anche)?)[.\s-]*(\d{1,2})/i);if(match){const n=Number(match[1]);if(n>=1&&n<=31){dayWord=w;day=n;weekday=weekdayOf(w.text);break}}if(/^\d{1,2}$/.test(token)&&Number(token)>=1&&Number(token)<=31){dayWord=w;day=Number(token);break}}if(!dayWord||(!weekday&&dayWord.cx>width*.12))continue;if(!weekday)weekday=left.map(w=>weekdayOf(w.text)).find(Boolean)||'';const content=row.filter(w=>w!==dayWord&&!weekdayOf(w.text));if(!content.length)continue;const codeStop=new Set(['DE','DES','DU','LA','LE','LES','ET','UN','UNE','AU','A']);const codeWord=content.find(w=>w.cx<width*.24&&codeFromWord(w.text)&&!codeStop.has(normToken(w.text)));let code=codeWord?normToken(codeWord.text):'';const rawText=row.map(w=>w.text).join(' ').replace(/\s+/g,' ').trim();const normalizedText=normName(rawText);if(!code){if(/DESIR.{0,15}CONGE/.test(normalizedText))code='Désir de congé';else if(/FERIE/.test(normalizedText))code='Férié';else code=content.map(w=>w.text).join(' ').replace(/\s+/g,' ').trim().slice(0,40)}if(!code)continue;const detailText=content.filter(w=>w!==codeWord).map(w=>w.text).join(' ');let timeText=detailText.replace(/([0-9])[oO](?=[h:])/g,(_,n)=>n+'0').replace(/([h:])[oO]([oO])/gi,(_,sep)=>sep+'00');const times=[...timeText.matchAll(/(\d{1,2})\s*[h:]\s*(\d{2})/gi)].map(m=>({hour:Number(m[1]),minute:Number(m[2])})).filter(t=>t.hour<=23&&t.minute<=59);const formatTime=t=>`${String(t.hour).padStart(2,'0')}:${String(t.minute).padStart(2,'0')}`;const note=rawText?`Lu sur le planning : ${rawText}`:'';rows.push({day,weekday,code,start:times.length>=2?formatTime(times[0]):'',end:times.length>=4?formatTime(times[3]):times.length>=2?formatTime(times[1]):'',break:times.length>=4?`${formatTime(times[1])}–${formatTime(times[2])}`:'',type:suggestShiftType(code),status:/DESIR|DEMANDE/.test(normalizedText)?'Demandé':'À confirmer',note,source:`Ligne ${weekday?weekday+' ':''}${day} · ${rawText}`,confidence:Math.round(median(group.words.map(w=>Number(w.confidence)||0))),include:false})}
-    const seen=new Set();return rows.filter(row=>{if(seen.has(row.day))return false;seen.add(row.day);return true}).sort((a,b)=>a.day-b.day);
+    const validWords=(words||[]).filter(w=>w&&w.text&&Number.isFinite(w.cx)&&Number.isFinite(w.cy));
+    if(!validWords.length)return[];
+    const typical=median(validWords.map(w=>w.height).filter(h=>h>0))||16;
+    const groups=groupByY(validWords,Math.max(7,Math.min(22,typical*.72,height*.003)));
+    const weekdays={LUN:'lundi',LUNDI:'lundi',MAR:'mardi',MARDI:'mardi',MER:'mercredi',MERCREDI:'mercredi',JEU:'jeudi',JEUDI:'jeudi',VEN:'vendredi',VENDREDI:'vendredi',SAM:'samedi',SAMEDI:'samedi',DIM:'dimanche',DIMANCHE:'dimanche'};
+    const weekdayKeys=Object.keys(weekdays).sort((a,b)=>b.length-a.length);
+    const weekdayOf=text=>{
+      const token=normToken(text);
+      const clean=token.replace(/^[IL|OQ0-9]+(?=(?:LUN|MAR|MER|JEU|VEN|SAM|DIM))/,'');
+      const key=weekdayKeys.find(k=>clean.startsWith(k));
+      return key?weekdays[key]:'';
+    };
+    const rows=[];
+    for(const group of groups){
+      const row=[...group.words].sort((a,b)=>a.cx-b.cx);
+      const left=row.filter(w=>w.cx<width*.20);
+      let dayWord=null,day=null,weekday='';
+      for(const w of left){
+        const text=String(w.text||'').trim();
+        const token=normToken(text).replace(/^[OQ](?=\d)/,'0').replace(/^[IL|](?=\d)/,'1');
+        const weekdayMatch=text.match(/(?:lun(?:di)?|mar(?:di)?|mer(?:credi)?|jeu(?:di)?|ven(?:dredi)?|sam(?:edi)?|dim(?:anche)?)[.\s-]*(\d{1,2})/i);
+        const slashDate=text.match(/^0?(\d{1,2})[./-]\d{1,2}(?:[./-]\d{2,4})?$/);
+        const numeric=/^\d{1,2}$/.test(token)?Number(token):null;
+        const n=weekdayMatch?Number(weekdayMatch[1]):slashDate?Number(slashDate[1]):numeric;
+        if(n!==null&&n>=1&&n<=31){dayWord=w;day=n;weekday=weekdayOf(text);break;}
+      }
+      if(!dayWord)continue;
+      if(!weekday)weekday=left.map(w=>weekdayOf(w.text)).find(Boolean)||'';
+      const content=row.filter(w=>w!==dayWord&&w.cx>dayWord.cx&&!weekdayOf(w.text));
+      if(!content.length)continue;
+      const codeStop=new Set(['DE','DES','DU','LA','LE','LES','ET','UN','UNE','AU','A']);
+      const codeWord=content.find(w=>w.cx<width*.24&&codeFromWord(w.text)&&!codeStop.has(normToken(w.text)));
+      const rawText=row.map(w=>w.text).join(' ').replace(/\s+/g,' ').trim();
+      const normalizedText=normName(rawText);
+      const normalizedContent=normName(content.map(w=>w.text).join(' '));
+      const isLeave=/DESIR.{0,20}CONGE/.test(normalizedText)||/DEMANDE.{0,20}CONGE/.test(normalizedText);
+      const isHoliday=/FERIE/.test(normalizedText);
+      let code='';
+      if(isLeave)code='Désir de congé';
+      else if(isHoliday)code='F';
+      else if(codeWord&&/^N[12]$/.test(normToken(codeWord.text)))code=normToken(codeWord.text);
+      else if(/\bNT AUX\b/.test(normalizedContent))code='N1';
+      else if(/\bN AUX\b/.test(normalizedContent))code='N2';
+      else if(codeWord)code=normToken(codeWord.text);
+      const inferredNightCode=!isLeave&&!isHoliday&&/^N[12]$/.test(code)&&!(codeWord&&normToken(codeWord.text)===code);
+      const detailText=content.filter(w=>w!==codeWord).map(w=>w.text).join(' ');
+      const timeText=detailText.replace(/([0-9])[oO](?=[h:])/g,(_,n)=>n+'0').replace(/([h:])[oO]([oO])/gi,(_,sep)=>sep+'00');
+      const times=[...timeText.matchAll(/(\d{1,2})\s*[h:]\s*(\d{2})/gi)].map(m=>({hour:Number(m[1]),minute:Number(m[2])})).filter(t=>t.hour<=23&&t.minute<=59);
+      const formatTime=t=>`${String(t.hour).padStart(2,'0')}:${String(t.minute).padStart(2,'0')}`;
+      const note=rawText?`Lu sur le planning : ${rawText}`:'';
+      if(!isLeave&&!isHoliday&&times.length<2&&Math.round(median(group.words.map(w=>Number(w.confidence)||0)))<55)continue;
+      rows.push({day,rawDay:day,weekday,cy:group.cy,individual:true,code,start:times.length>=2?formatTime(times[0]):'',end:times.length>=4?formatTime(times[3]):times.length>=2?formatTime(times[1]):'',break:times.length>=4?`${formatTime(times[1])}–${formatTime(times[2])}`:'',type:suggestShiftType(code),status:/DESIR|DEMANDE/.test(normalizedText)?'Demandé':'À confirmer',note,source:`Ligne ${weekday?weekday+' ':''}${day} · ${rawText}${inferredNightCode?' · code proposé d’après le libellé, à vérifier':''}`,confidence:Math.round(median(group.words.map(w=>Number(w.confidence)||0))),include:false});
+    }
+    return rows.sort((a,b)=>a.cy-b.cy);
+  }
+  function mergeIndividualOcrRows(primary,secondary,height){
+    const merged=primary.map(row=>({...row})),radius=Math.max(5,Math.min(14,height*.008));
+    for(const row of secondary){
+      const match=merged.filter(item=>Math.abs(item.cy-row.cy)<=radius).sort((a,b)=>Math.abs(a.cy-row.cy)-Math.abs(b.cy-row.cy))[0];
+      if(!match){merged.push({...row});continue}
+      for(const field of ['code','start','end','break','weekday'])if(!match[field]&&row[field])match[field]=row[field];
+      if((!match.start||!match.end)&&row.start&&row.end){match.start=row.start;match.end=row.end;match.break=row.break}
+    }
+    return merged.sort((a,b)=>a.cy-b.cy);
+  }
+  function applyIndividualMonth(row,month){
+    const original=row.rawDay??row.day;row.day=original;
+    row.source=row.baseSource||row.source;row.baseSource=row.source;
+    const parts=String(month||'').match(/^(\d{4})-(\d{2})$/), weekdays={dimanche:0,lundi:1,mardi:2,mercredi:3,jeudi:4,vendredi:5,samedi:6};
+    if(parts&&row.weekday&&Object.hasOwn(weekdays,row.weekday)){
+      const year=Number(parts[1]),m=Number(parts[2]),limit=new Date(year,m,0).getDate(),wanted=weekdays[row.weekday];
+      if(original<=limit&&new Date(year,m-1,original).getDay()!==wanted){
+        const choices=[];for(let delta=-3;delta<=3;delta++){const candidate=original+delta;if(candidate>=1&&candidate<=limit&&new Date(year,m-1,candidate).getDay()===wanted)choices.push(candidate)}
+        if(choices.length===1){row.day=choices[0];row.source+=` · date suggérée ${row.day} d’après « ${row.weekday} » et le mois choisi (OCR : ${original}) : à vérifier`}
+        else row.source+=` · incohérence entre « ${row.weekday} » et la date ${original} : à vérifier`;
+      }
+    }
+    row.date=month?dateForOcrDay(month,row.day):'';return row;
   }
   function cellInkScore(source,cx,cy,step){const context=source.getContext('2d',{willReadFrequently:true});const halfW=Math.max(5,Math.round(step*.28)),halfH=Math.max(10,Math.round(Math.min(step*.28,19)));const x0=Math.max(0,Math.round(cx-halfW)),y0=Math.max(0,Math.round(cy-halfH)),w=Math.min(source.width-x0,Math.round(halfW*2)),h=Math.min(source.height-y0,Math.round(halfH*2));if(w<8||h<8)return 0;let pixels;try{pixels=context.getImageData(x0,y0,w,h).data}catch(e){return 0}const gray=(x,y)=>{const i=(y*w+x)*4;return .2126*pixels[i]+.7152*pixels[i+1]+.0722*pixels[i+2]};const ring=[];const ry=Math.max(1,Math.floor(h*.16)),rx=Math.max(1,Math.floor(w*.12));for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(y<ry||y>=h-ry||x<rx||x>=w-rx)ring.push(gray(x,y));const bg=median(ring);let dark=0,total=0;for(let y=ry;y<h-ry;y++)for(let x=rx;x<w-rx;x++){if(bg-gray(x,y)>45)dark++;total++}return total?dark/total:0}
   function inCalendarColumns(x){return ocrDayModel.step<=0||x>=ocrDayModel.intercept+ocrDayModel.step*.2&&x<=ocrDayModel.intercept+ocrDayModel.step*(ocrHeaderDays.size+.8)}
@@ -677,18 +756,18 @@
   $('manualReview').addEventListener('click',()=>{syncOcrDraft();startManualReview()});
   $('addManualRow').addEventListener('click',()=>{syncOcrDraft();ocrCandidates.push({date:'',code:'',type:'Autre',start:'',end:'',source:'saisie manuelle',include:false});renderOcrReviewRows()});
   $('selectCompleteRows').addEventListener('click',()=>{for(const tr of $('ocrRows').querySelectorAll('tr[data-index]'))tr.querySelector('input[type=checkbox]').checked=validDate(tr.querySelector('input[type=date]').value)&&!!tr.querySelector('input[type=text]').value.trim();syncOcrDraft();updateOcrSelection()});
-  $('importMonth').addEventListener('change',()=>{syncOcrDraft();ocrMonthSource='manual';ocrMonthDetected=false;$('confirmOcrImport').checked=false;updateMonthStatus();for(const c of ocrCandidates)if(c.day){c.date=dateForOcrDay(ocrCaptureMonth,c.day);c.include=false}renderOcrReviewRows();$('ocrMonthNote').textContent=ocrCaptureMonth?'Mois modifié : les dates OCR ont été recalculées et décochées. Vérifiez-les à nouveau. Les dates manuelles restent inchangées.':'Choisissez le mois du document avant de générer les dates OCR.';});
+  $('importMonth').addEventListener('change',()=>{syncOcrDraft();ocrMonthSource='manual';ocrMonthDetected=false;$('confirmOcrImport').checked=false;updateMonthStatus();for(const c of ocrCandidates)if(c.day){if(c.individual)applyIndividualMonth(c,ocrCaptureMonth);else c.date=dateForOcrDay(ocrCaptureMonth,c.day);c.include=false}renderOcrReviewRows();$('ocrMonthNote').textContent=ocrCaptureMonth?'Mois modifié : les dates OCR ont été recalculées et décochées. Vérifiez-les à nouveau. Les dates manuelles restent inchangées.':'Choisissez le mois du document avant de générer les dates OCR.';});
   $('analyzeSchedule').addEventListener('click',async()=>{
     const file=dom.file.files?.[0];if(!file){setOcrStatus('Choisissez d’abord une photo ou un PDF.','error');return}
     const manualMonth=ocrMonthSource==='manual'?$('importMonth').value:'';resetOcrResults();$('analyzeSchedule').disabled=true;dom.file.disabled=true;dom.clearFile.disabled=true;$('manualReview').disabled=true;$('importMonth').disabled=true;if(manualMonth){$('importMonth').value=manualMonth;ocrMonthSource='manual';updateMonthStatus();}
     try{
       const canvas=await makeOcrCanvas(file);ocrSourceCanvas=canvas;ocrPageSize={width:canvas.width,height:canvas.height};setOcrStatus('Chargement du moteur OCR et du modèle de langue…');
-      const worker=await getOcrWorker();setOcrStatus('Lecture du tableau…');const result=await worker.recognize(canvas,{}, {blocks:true});const data=result.data||{};
+      const worker=await getOcrWorker();const layoutChoice=$('ocrLayout').value||'auto';setOcrStatus('Lecture du tableau…');if(layoutChoice==='individual')await worker.setParameters({tessedit_pageseg_mode:'6',tessedit_char_whitelist:''});let result,focusedResult=null;try{result=await worker.recognize(canvas,{}, {blocks:true});if(layoutChoice==='individual'){setOcrStatus('Deuxième lecture locale ciblée…');focusedResult=await worker.recognize(prepareIndividualOcrCanvas(canvas),{}, {blocks:true})}}finally{if(layoutChoice==='individual')try{await worker.setParameters({tessedit_pageseg_mode:'3',tessedit_char_whitelist:''})}catch(e){}}const data=result.data||{};
       ocrAllWords=(data.words||[]).map(getWordGeometry).filter(w=>w&&w.text&&w.confidence>=15);$('ocrRaw').textContent=data.text||'';$('ocrRawWrap').hidden=!(data.text||'');
       if(!ocrAllWords.length)throw new Error('Aucun mot lisible. Essayez une image plus nette, cadrée et droite.');
       const detectedMonth=await readScheduleTitle(worker,canvas,ocrAllWords,data.text||'');
       if(detectedMonth){ocrCaptureMonth=`${detectedMonth.year}-${String(detectedMonth.month).padStart(2,'0')}`;ocrMonthDetected=true;ocrMonthSource='detected';$('importMonth').value=ocrCaptureMonth;view=new Date(detectedMonth.year,detectedMonth.month-1,1);render();}updateMonthStatus();
-       const layoutChoice=$('ocrLayout').value||'auto';const individualRows=parseIndividualScheduleRows(ocrAllWords,canvas.width,canvas.height);const useIndividual=layoutChoice==='individual'||(layoutChoice==='auto'&&individualRows.length>=3);if(useIndividual){setPersonSelectionVisible(false);$('ocrReview').hidden=false;$('ocrRowPreview').hidden=true;if(!individualRows.length){ocrCandidates=[];startManualReview();$('ocrReviewNote').textContent='Aucune date par ligne n’a pu être lue automatiquement. Ajoutez ou corrigez les dates et les codes dans l’aperçu.';$('ocrMonthNote').textContent='Choisissez le mois du document si les dates ne sont pas complètes.';setOcrStatus('Format individuel choisi, mais aucune ligne date/code lisible. Vérifiez l’aperçu ou saisissez les lignes manuellement.','error');return}ocrCandidates=individualRows.map(row=>({...row,date:ocrCaptureMonth?dateForOcrDay(ocrCaptureMonth,row.day):'',include:false}));const withTimes=ocrCandidates.filter(row=>row.start&&row.end).length;const requiresMonth=ocrCandidates.some(row=>row.day);$('ocrReviewNote').textContent=`${ocrCandidates.length} ligne(s) de planning individuel repérée(s), sans sélection de personne.${withTimes?` Début et fin proposés sur ${withTimes} ligne(s).`:''} Vérifiez les dates, codes, types et horaires avant de cocher les lignes à importer.`;$('ocrMonthNote').textContent=ocrCaptureMonth?`${ocrMonthDetected?'Mois lu sur le document':'Mois choisi manuellement'} : ${monthFmt.format(new Date(...ocrCaptureMonth.split('-').map(Number).map((n,i)=>i===1?n-1:n)))}. Vérifiez-le.`:'Mois absent ou illisible : choisissez-le pour compléter les dates.';renderOcrReviewRows();setOcrStatus(`${ocrCandidates.length} ligne(s) individuelle(s) repérée(s). Vérifiez les propositions ; le nom reste facultatif.`,'success');return}setPersonSelectionVisible(true);
+       const initialIndividualRows=parseIndividualScheduleRows(ocrAllWords,canvas.width,canvas.height);const focusedWords=(focusedResult?.data?.words||[]).map(getWordGeometry).filter(w=>w&&w.text&&w.confidence>=15);const individualRows=layoutChoice==='individual'?mergeIndividualOcrRows(initialIndividualRows,parseIndividualScheduleRows(focusedWords,canvas.width,canvas.height),canvas.height):initialIndividualRows;const useIndividual=layoutChoice==='individual'||(layoutChoice==='auto'&&individualRows.length>=3);if(useIndividual){setPersonSelectionVisible(false);$('ocrReview').hidden=false;$('ocrRowPreview').hidden=true;if(!individualRows.length){ocrCandidates=[];startManualReview();$('ocrReviewNote').textContent='Aucune date par ligne n’a pu être lue automatiquement. Ajoutez ou corrigez les dates et les codes dans l’aperçu.';$('ocrMonthNote').textContent='Choisissez le mois du document si les dates ne sont pas complètes.';setOcrStatus('Format individuel choisi, mais aucune ligne date/code lisible. Vérifiez l’aperçu ou saisissez les lignes manuellement.','error');return}ocrCandidates=individualRows.map(row=>applyIndividualMonth({...row,include:false},ocrCaptureMonth));const withTimes=ocrCandidates.filter(row=>row.start&&row.end).length;const requiresMonth=ocrCandidates.some(row=>row.day);$('ocrReviewNote').textContent=`${ocrCandidates.length} ligne(s) de planning individuel repérée(s), sans sélection de personne.${withTimes?` Début et fin proposés sur ${withTimes} ligne(s).`:''} Vérifiez les dates, codes, types et horaires avant de cocher les lignes à importer.`;$('ocrMonthNote').textContent=ocrCaptureMonth?`${ocrMonthDetected?'Mois lu sur le document':'Mois choisi manuellement'} : ${monthFmt.format(new Date(...ocrCaptureMonth.split('-').map(Number).map((n,i)=>i===1?n-1:n)))}. Vérifiez-le.`:'Mois absent ou illisible : choisissez-le pour compléter les dates.';renderOcrReviewRows();setOcrStatus(`${ocrCandidates.length} ligne(s) individuelle(s) repérée(s). Vérifiez les propositions ; le nom reste facultatif.`,'success');return}setPersonSelectionVisible(true);
        const monthParts=(ocrCaptureMonth||$('importMonth').value||'').split('-').map(Number);const daysInDocumentMonth=monthParts.length===2&&monthParts.every(Number.isFinite)?new Date(monthParts[0],monthParts[1],0).getDate():31;let headerSeeds=findHeaderDays(ocrAllWords,canvas.height,daysInDocumentMonth);setOcrStatus('Lecture locale de la bande des dates…');if(headerSeeds.size<12){const topSeeds=await scanTopHeader(worker,canvas,daysInDocumentMonth);if(topSeeds.size>headerSeeds.size)headerSeeds=topSeeds}ocrDayModel=await refineHeaderDays(worker,canvas,headerSeeds,daysInDocumentMonth);ocrHeaderDays=ocrDayModel.dayMap;ocrPersons=detectPeople(ocrAllWords,canvas.height,canvas.width,ocrHeaderDays);
       const select=$('employeeSelect');select.innerHTML='<option value="">— Choisir un nom ou son aperçu —</option>'+ocrPersons.map((p,i)=>`<option value="${i}">${safeText(p.label)}</option>`).join('')+'<option value="manual">Nom choisi sur le document</option>';select.disabled=false;$('personLabel').disabled=false;$('findPerson').disabled=false;$('manualRowPanel').hidden=false;$('chooseRowOnImage').disabled=false;
       const rowCanvas=$('manualRowCanvas');rowCanvas.width=Math.round(ocrNameColumnWidth||canvas.width*.22);rowCanvas.height=canvas.height;rowCanvas.getContext('2d').drawImage(canvas,0,0);renderPersonResults();

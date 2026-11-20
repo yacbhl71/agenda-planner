@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'planner-shell-v18-individual-schedule-import';
+const SHELL_CACHE = 'planner-shell-v19-individual-ocr-rows';
 const SHELL_ASSETS = [
   './',
   './index.html',
