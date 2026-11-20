@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'planner-shell-v16-linked-manual-cell-badge';
+const SHELL_CACHE = 'planner-shell-v18-individual-schedule-import';
 const SHELL_ASSETS = [
   './',
   './index.html',
